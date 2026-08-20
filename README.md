@@ -2,51 +2,113 @@
 
 A stateless, project-agnostic PPTX production, rendering, and QA engine for GitHub-based projects.
 
-## Purpose
+## What this repository is
 
-This repository is a public production engine. It does **not** store user project code, private content, slide source materials, project history, or final project deliverables.
+This repository is a **public execution engine**, not a project repository and not a deliverable store.
 
-It owns only reusable PPT production machinery:
+It permanently stores only reusable production machinery:
 
-- PPTX generation from a stable build manifest
-- package and structural QA
-- real rendering through LibreOffice Impress
-- hash-bound evidence generation
-- fixture-based smoke tests
-- future private-project bridge contracts
+- PptxGenJS-based PPTX generation
+- build-request and source-spec contracts
+- package / slide-size / hash QA
+- real rendering with LibreOffice Impress
+- page rasterization with Poppler
+- hash-bound build and render evidence
+- trusted cross-repository orchestration
+- synthetic public fixtures used only for engine unit tests
 
-## Current scope
+It must **not** permanently store caller project source, private images, private templates, private business data, project history, or final caller PPTX files.
 
-The first implementation supports a public fixture build:
+## Primary production path
+
+The acceptance path is now:
 
 ```text
-fixture manifest -> PptxGenJS -> PPTX -> LibreOffice render -> QA manifest -> GitHub Actions artifact
+Private project repository
+  └─ build-request.json + PPT source JSON
+            ↓ temporary authenticated read
+Public PPT Production Engine
+  ├─ PptxGenJS build
+  ├─ package QA
+  ├─ LibreOffice real render
+  ├─ Poppler page PNGs
+  └─ SHA-256 evidence binding
+            ↓ authenticated writeback
+Same private project repository
+  ├─ final .pptx
+  └─ QA / render evidence
 ```
 
-The fixture is intentionally generic and contains no private project data.
+The public engine does **not** upload private caller outputs as public Actions artifacts.
 
-## Why PptxGenJS and LibreOffice?
+## Mature components, not reinvention
 
-- PptxGenJS is a mature JavaScript library for generating standards-compatible PPTX files.
-- LibreOffice Impress provides a practical headless renderer for CI verification.
-- Python QA scripts inspect the final PPTX package and bind outputs to SHA-256 evidence.
+The engine intentionally delegates established responsibilities to mature tools:
 
-## Repository contract
+- **PptxGenJS** — PPTX generation
+- **LibreOffice Impress** — headless PPTX → PDF rendering
+- **Poppler / pdftoppm** — PDF → per-page PNG rendering
+- **Python stdlib** — ZIP/package inspection and SHA-256 evidence
 
-The engine is stateless:
+The repository only implements the missing orchestration layer: safe request validation, temporary execution, QA binding, and private-repository writeback.
 
-1. It may read an input build package during a workflow run.
-2. It may generate PPTX, render pages, and QA evidence in temporary workspace storage.
-3. It may write results back to a caller repository when explicitly configured with scoped credentials.
-4. It must not persist caller project inputs or deliverables in this public repository.
+## Build request contract
 
-## First milestone
+A caller repository provides a small request file, for example:
 
-- [x] Public repository created
-- [x] Fixture build contract defined
-- [x] PPTX generator implemented
-- [x] Package QA implemented
-- [x] Render QA implemented
-- [x] GitHub Actions smoke workflow implemented
-- [ ] First GitHub Actions fixture artifact verified
+```json
+{
+  "contract_version": "1",
+  "request_id": "report-ppt-001",
+  "driver": "pptxgenjs-spec-v1",
+  "source": "ppt/source.json",
+  "output": {
+    "pptx": "ppt/exports/report.pptx",
+    "evidence_dir": "ppt/qa/engine",
+    "writeback_render_evidence": true
+  },
+  "quality": {
+    "min_slides": 6,
+    "require_wide": true,
+    "render_dpi": 144
+  }
+}
+```
 
+The source and all output destinations are repository-relative. Absolute paths and `..` traversal are rejected.
+
+## Security model
+
+- Private caller repositories must be explicitly allowlisted in `config/allowed-repositories.json`.
+- Cross-repository access uses one least-privilege engine credential stored as the repository secret `PPT_ENGINE_REPO_TOKEN`.
+- The source checkout uses `persist-credentials: false`.
+- Caller source is never executed with write credentials present.
+- Writeback occurs in a fresh checkout after build and QA have completed.
+- The writeback step refuses to publish if package QA or render QA fails, or if their PPTX hashes do not match the generated PPTX.
+- Pull requests do not receive the private-repository credential.
+
+GitHub scopes the built-in `GITHUB_TOKEN` to the current repository; checking out a different private repository therefore requires a separate scoped credential. This is infrastructure authorization, not part of each build request.
+
+## Workflows
+
+- `.github/workflows/private-project-build.yml` — primary production workflow; private input → public runner → private writeback.
+- `.github/workflows/fixture-smoke.yml` — synthetic engine-only unit smoke; it does not count as cross-repository acceptance.
+
+## Current integration target
+
+The first real integration fixture lives in the **private** `riyuewuxing/PPT` repository on `rules/general-ppt-workflow`:
+
+- `projects/_engine_bridge_smoke/build-request.json`
+- `projects/_engine_bridge_smoke/ppt-source.json`
+
+Expected writeback:
+
+- `projects/_engine_bridge_smoke/exports/engine-generated-smoke.pptx`
+- `projects/_engine_bridge_smoke/qa/engine/engine-result.json`
+- package QA, render QA, PDF, and per-page PNG evidence
+
+The integration is PASS only when those outputs are produced by the public engine and committed back to the private branch.
+
+## Version
+
+Current engine contract: `0.2.0`.
