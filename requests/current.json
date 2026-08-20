@@ -1,0 +1,7 @@
+{
+  "source_repo": "riyuewuxing/PPT",
+  "source_ref": "rules/general-ppt-workflow",
+  "request_path": "projects/_engine_bridge_smoke/build-request.json",
+  "writeback_branch": "rules/general-ppt-workflow",
+  "nonce": "private-bridge-smoke-001"
+}
