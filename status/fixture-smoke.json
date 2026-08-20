@@ -1,0 +1,11 @@
+{
+  "workflow_status": "success",
+  "run_id": "32396748451",
+  "engine_commit": "c19fb9561358f3afe1e4f477e3449e09d47b4002",
+  "build_status": "PASS",
+  "package_status": "PASS",
+  "render_status": "PASS",
+  "pptx_sha256": "e200bbef3be53a8ee55cbc014a5a160327dce2c9b8daebae715bf622057f4373",
+  "rendered_pages": 6,
+  "updated_at": "2026-08-20T17:17:44.472385+00:00"
+}
