@@ -34,7 +34,7 @@ def write_output(name: str, value: str) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--event", default=os.environ.get("GITHUB_EVENT_PATH"))
-    ap.add_argument("--integration-config", default="integration/private-smoke.json")
+    ap.add_argument("--push-config", default="requests/current.json")
     ap.add_argument("--allowlist", default="config/allowed-repositories.json")
     args = ap.parse_args()
 
@@ -46,7 +46,7 @@ def main() -> None:
     elif event_name == "workflow_dispatch":
         payload = event.get("inputs") or {}
     elif event_name == "push":
-        payload = json.loads(Path(args.integration_config).read_text(encoding="utf-8"))
+        payload = json.loads(Path(args.push_config).read_text(encoding="utf-8"))
     else:
         die(f"Unsupported event: {event_name}")
 
