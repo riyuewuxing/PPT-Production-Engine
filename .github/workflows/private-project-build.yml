@@ -31,10 +31,13 @@ on:
       - engine/resolve_invocation.py
       - engine/prepare_project_job.py
       - engine/stage_writeback.py
+      - engine/write_public_status.py
       - .github/workflows/private-project-build.yml
 
+# The built-in token is used only to write a non-sensitive status receipt to this public engine repo.
+# Cross-repository private access uses PPT_ENGINE_REPO_TOKEN separately.
 permissions:
-  contents: read
+  contents: write
 
 env:
   NODE_VERSION: '22'
@@ -178,4 +181,29 @@ jobs:
           PY
           fi
 
-      # Deliberately no upload-artifact step: private caller content must not become a public-engine artifact.
+      # No private artifact is uploaded to this public repository.
+      # A fresh public checkout writes only a non-sensitive workflow status receipt.
+      - name: Checkout engine status writer
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: engine-status
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Publish non-sensitive status receipt
+        if: always()
+        working-directory: engine-status
+        env:
+          JOB_STATUS: ${{ job.status }}
+          SOURCE_REPOSITORY: ${{ steps.invoke.outputs.source_repo }}
+          SOURCE_REF: ${{ steps.invoke.outputs.source_ref }}
+          REQUEST_PATH: ${{ steps.invoke.outputs.request_path }}
+        run: |
+          python3 engine/write_public_status.py --work-root ../engine-repo --output status/private-smoke.json
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git add status/private-smoke.json
+          git commit -m "Record private bridge run ${GITHUB_RUN_ID}" || exit 0
+          git push origin HEAD:main
