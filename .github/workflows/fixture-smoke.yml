@@ -1,0 +1,71 @@
+name: Fixture Smoke Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  fixture-smoke:
+    name: Build, render, and QA public fixture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout engine
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install render dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice poppler-utils fonts-noto-cjk
+
+      - name: Install Node dependencies
+        run: npm install
+
+      - name: Build fixture PPTX
+        run: npm run build:fixture
+
+      - name: Package QA
+        run: npm run qa:fixture
+
+      - name: Real render QA
+        run: npm run render:fixture
+
+      - name: Show evidence files
+        if: always()
+        run: |
+          find dist/fixture/basic -maxdepth 3 -type f | sort
+          echo '--- build-result.json ---'
+          cat dist/fixture/basic/qa/build-result.json || true
+          echo '--- package-qa.json ---'
+          cat dist/fixture/basic/qa/package-qa.json || true
+          echo '--- render-qa.json ---'
+          cat dist/fixture/basic/qa/render-qa.json || true
+
+      - name: Upload fixture artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppt-engine-fixture-smoke
+          path: |
+            dist/fixture/basic/**/*.pptx
+            dist/fixture/basic/**/*.pdf
+            dist/fixture/basic/**/*.png
+            dist/fixture/basic/qa/*.json
+          if-no-files-found: error
+          retention-days: 14
