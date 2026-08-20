@@ -2,146 +2,124 @@
 
 ## 1. Engine role
 
-`PPT-Production-Engine` is a stateless production service for GitHub-hosted projects.
+`PPT-Production-Engine` is a stateless public execution engine.
 
-It owns production mechanics, not project meaning.
+It owns only PPT production mechanics:
 
-The engine may permanently contain:
+- PPTX generation;
+- package validation;
+- real rendering;
+- page rasterization;
+- SHA-256-bound QA evidence;
+- GitHub-hosted execution.
 
-- reusable PPTX build code;
-- rendering and QA scripts;
-- request/source/output schemas;
-- trusted orchestration workflows;
-- public synthetic fixtures;
-- dependency/version/third-party notices.
+It does not own project meaning, project history, private repository access, or final product decisions.
 
-The engine must not permanently contain:
+## 2. AI-mediated production contract
 
-- caller project source code or private slide content;
-- caller images, templates, business/research data, or private fonts;
-- caller deliverables;
-- caller render evidence;
-- repository access credentials.
-
-## 2. Primary cross-repository contract
-
-The production path is:
+The primary path is:
 
 ```text
 Private caller repository
-    build-request.json
-    source JSON
-          ↓ temporary authenticated checkout
-Public PPT Production Engine / GitHub-hosted runner
-          ↓ build + package QA + real render QA
-Fresh checkout of the same private caller repository
-          ↓
-final PPTX + hash-bound evidence committed back to caller
+        ↓
+AI orchestrator reads project and prepares a minimum build package
+        ↓
+Public-safe handoff input
+        ↓
+PPT Production Engine / GitHub-hosted runner
+        ↓
+PPTX + package QA + render QA + PDF + page PNGs
+        ↓ transient Actions artifact
+AI orchestrator retrieves and reviews result
+        ↓
+AI orchestrator writes accepted result to the original Private repository
 ```
 
-The public engine repository itself remains unchanged by caller builds.
+The public engine never needs a PAT, GitHub App installation token, deploy key, or other credential for the caller repository.
 
-## 3. Caller request v1
+## 3. Handoff manifest
 
-A caller request uses `contract_version = 1` and currently supports the `pptxgenjs-spec-v1` driver.
+The current input is a repository-relative manifest staged at:
 
-```json
-{
-  "contract_version": "1",
-  "request_id": "example-001",
-  "driver": "pptxgenjs-spec-v1",
-  "source": "ppt/source.json",
-  "output": {
-    "pptx": "ppt/exports/example.pptx",
-    "evidence_dir": "ppt/qa/engine",
-    "writeback_render_evidence": true
-  },
-  "quality": {
-    "min_slides": 6,
-    "require_wide": true,
-    "render_dpi": 144
-  }
-}
-```
+`handoff/current/build-manifest.json`
 
-Rules:
+It contains only declarative build data accepted by the engine. The current driver uses PptxGenJS-backed slide specifications.
 
-- request/source/output paths are repository-relative;
-- absolute paths and `..` traversal are rejected;
-- writeback destinations must stay inside the caller repository;
-- source must be declarative JSON for the current driver;
-- caller code is not executed during v1 cross-repository builds.
+All engine output paths must remain inside the public engine workspace. Absolute paths and `..` traversal are forbidden.
 
-## 4. Isolation and credential boundary
+## 4. Privacy boundary
 
-The credential boundary is mandatory:
+This repository is public. Any handoff input committed here must be treated as permanently public even after the current file is deleted, because Git history, clones, mirrors, or caches may retain it.
 
-1. Engine code is checked out first.
-2. Invocation is validated against `config/allowed-repositories.json`.
-3. Private caller input is checked out using `PPT_ENGINE_REPO_TOKEN` with `persist-credentials: false`.
-4. The caller source is parsed as data, not executed as code.
-5. Build, package QA, and render QA run without private write credentials available to caller content.
-6. Only after QA succeeds is the private repository checked out again into a fresh writeback directory.
-7. Generated output is copied into that fresh checkout.
-8. The engine refuses writeback if package QA or render QA is FAIL or if their PPTX SHA-256 does not match the generated PPTX.
-9. The fresh checkout commits and pushes the generated result to the requested private branch.
+Therefore a public handoff must never contain:
 
-The built-in `GITHUB_TOKEN` is scoped to the public engine repository and is not sufficient for a different private repository. The cross-repository credential is therefore a one-time infrastructure prerequisite, not a per-build user action.
+- API keys, tokens, passwords, cookies, certificates, or other credentials;
+- sensitive personal data;
+- confidential business or research data;
+- assets whose license forbids public exposure;
+- any content the caller requires to remain secret.
 
-## 5. Evidence contract
+Sensitive jobs require a separate private execution path and are outside this public-engine contract.
 
-A successful build writes back at minimum:
+## 5. Mature execution components
+
+The engine does not reimplement mature document machinery:
+
+- PptxGenJS generates standards-compatible PPTX packages;
+- LibreOffice Impress performs headless PPTX → PDF rendering;
+- Poppler/pdftoppm produces per-page PNGs;
+- Python stdlib performs ZIP/package and SHA-256 checks.
+
+The custom layer is limited to contract validation, execution orchestration, QA evidence binding, and status reporting.
+
+## 6. Output contract
+
+A successful workflow artifact contains at least:
 
 - final `.pptx`;
 - `build-result.json`;
 - `package-qa.json`;
 - `render-qa.json`;
-- `engine-result.json`.
+- rendered PDF;
+- per-page PNGs.
 
-When `writeback_render_evidence = true`, it also writes:
+`build-result.json`, `package-qa.json`, and `render-qa.json` must identify the same request and final PPTX SHA-256.
 
-- LibreOffice-exported PDF;
-- every Poppler-rendered page PNG.
+## 7. Status discovery
 
-`package-qa.json`, `render-qa.json`, and `engine-result.json` must bind to the same final PPTX SHA-256.
+`status/ai-handoff-last.json` contains only non-sensitive metadata:
 
-## 6. Public artifact rule
+- workflow status;
+- run ID;
+- artifact name;
+- request ID;
+- build/package/render PASS/FAIL;
+- final PPTX SHA-256;
+- rendered page count.
 
-Private caller artifacts must not be uploaded as artifacts of the public engine workflow.
+This allows ChatGPT or another AI orchestrator to complete the workflow without asking a human to inspect the GitHub Actions UI.
 
-The only allowed long-term destination for private build outputs is the authorized private caller repository (or another explicitly private destination added in a future contract).
+## 8. Stateless cleanup
 
-Synthetic engine fixtures are exempt because they contain no caller data.
+After the AI orchestrator retrieves the completed result, the current `handoff/` input is removed from the repository's current tree.
 
-## 7. Genericity
+This cleanup is organizational only; it is not a secrecy mechanism and does not erase prior public Git history.
 
-The engine must remain project-agnostic. Request/schema fields must not encode domains such as education, investment, business, recruiting, research, or a particular PPT topic.
+## 9. Genericity
 
-Caller projects own:
+The engine must stay domain-agnostic. It must not encode education, investment, recruiting, business, research, or topic-specific logic into its core contract.
 
-- domain logic;
-- content generation;
-- project-specific templates/assets;
-- storyboards;
-- data sourcing;
-- final product decisions.
+Caller projects own content and domain logic. The engine owns only PPT production mechanics.
 
-The engine owns:
+## 10. Acceptance
 
-- PPTX production;
-- generic package validation;
-- generic rendering;
-- generic evidence generation;
-- generic writeback mechanics.
+The executable stack is already verified on real GitHub-hosted Ubuntu runners:
 
-Additional drivers may be added later, but they must preserve the same stateless and credential-isolation rules.
+- engine fixture smoke: Build PASS / Package QA PASS / Render QA PASS / 6 pages;
+- AI-mediated handoff smoke: Build PASS / Package QA PASS / Render QA PASS / 6 pages.
 
-## 8. Acceptance definition
+AI-mediated smoke PPTX SHA-256:
 
-A synthetic public fixture proves only that the engine executable stack works.
+`0d1e31589e2328b788903bcebd4d90e7f6bdee1bb8e12711b4c56ed00f728a0c`
 
-The engine is not accepted for production until a real integration test completes this exact path:
-
-`Private source → Public GitHub-hosted runner → generated PPTX → real render/QA → commit back to Private repository`.
-
-Current contract version: `0.2.0`.
+Current contract version: `0.3.0`.
