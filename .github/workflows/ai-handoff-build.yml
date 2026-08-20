@@ -1,0 +1,107 @@
+name: AI Handoff PPT Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - handoff/current/build-manifest.json
+      - engine/build_pptx.mjs
+      - engine/qa_package.py
+      - engine/render_pptx.py
+      - .github/workflows/ai-handoff-build.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    name: Build PPTX from AI-staged handoff
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout engine
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install mature render dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice poppler-utils fonts-noto-cjk
+          npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build PPTX
+        run: node engine/build_pptx.mjs --manifest handoff/current/build-manifest.json
+
+      - name: Package QA
+        run: python3 engine/qa_package.py --manifest handoff/current/build-manifest.json
+
+      - name: Real render QA
+        run: python3 engine/render_pptx.py --manifest handoff/current/build-manifest.json
+
+      - name: Upload transient build result
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppt-ai-handoff-${{ github.run_id }}
+          path: |
+            dist/handoff/current/**/*.pptx
+            dist/handoff/current/**/*.pdf
+            dist/handoff/current/**/*.png
+            dist/handoff/current/qa/*.json
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Publish non-sensitive status receipt
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          out = {
+              'workflow_status': os.environ['JOB_STATUS'],
+              'run_id': os.environ['GITHUB_RUN_ID'],
+              'engine_commit': os.environ['GITHUB_SHA'],
+              'artifact_name': f"ppt-ai-handoff-{os.environ['GITHUB_RUN_ID']}",
+              'request_id': None,
+              'build_status': None,
+              'package_status': None,
+              'render_status': None,
+              'pptx_sha256': None,
+              'rendered_pages': None,
+          }
+          m = Path('handoff/current/build-manifest.json')
+          if m.exists():
+              out['request_id'] = json.loads(m.read_text(encoding='utf-8')).get('request_id')
+          for name, key in [('build-result.json','build_status'),('package-qa.json','package_status'),('render-qa.json','render_status')]:
+              p = Path('dist/handoff/current/qa') / name
+              if p.exists():
+                  d = json.loads(p.read_text(encoding='utf-8'))
+                  out[key] = d.get('status')
+                  out['pptx_sha256'] = d.get('pptx_sha256') or out['pptx_sha256']
+                  if name == 'render-qa.json':
+                      out['rendered_pages'] = len(d.get('pages', []))
+          Path('status').mkdir(exist_ok=True)
+          Path('status/ai-handoff-last.json').write_text(json.dumps(out, indent=2, ensure_ascii=False), encoding='utf-8')
+          print(json.dumps(out, indent=2, ensure_ascii=False))
+          PY
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git add status/ai-handoff-last.json
+          git commit -m "Record AI handoff run ${GITHUB_RUN_ID}" || true
+          git push origin HEAD:main
