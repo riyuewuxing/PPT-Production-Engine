@@ -1,0 +1,14 @@
+{
+  "workflow_status": "failure",
+  "phase_reached": "before_private_source_checkout",
+  "run_id": "32397149177",
+  "run_attempt": "1",
+  "engine_commit": "81c27efeb3416922219940dfbba6b554e6317dc0",
+  "source_repository": "riyuewuxing/PPT",
+  "source_ref": "rules/general-ppt-workflow",
+  "request_path": "projects/_engine_bridge_smoke/build-request.json",
+  "package_status": null,
+  "render_status": null,
+  "pptx_sha256": null,
+  "updated_at": "2026-08-20T17:21:36.443943+00:00"
+}
