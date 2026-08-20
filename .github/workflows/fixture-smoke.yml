@@ -1,12 +1,19 @@
 name: Fixture Smoke Build
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-  workflow_dispatch:
+    paths:
+      - fixtures/**
+      - engine/build_pptx.mjs
+      - engine/qa_package.py
+      - engine/render_pptx.py
+      - package.json
+      - .github/workflows/fixture-smoke.yml
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 jobs:
@@ -35,7 +42,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends libreoffice poppler-utils fonts-noto-cjk
 
       - name: Install Node dependencies
-        run: npm install
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Build fixture PPTX
         run: npm run build:fixture
@@ -46,16 +53,43 @@ jobs:
       - name: Real render QA
         run: npm run render:fixture
 
-      - name: Show evidence files
+      - name: Publish synthetic fixture status
         if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
         run: |
-          find dist/fixture/basic -maxdepth 3 -type f | sort
-          echo '--- build-result.json ---'
-          cat dist/fixture/basic/qa/build-result.json || true
-          echo '--- package-qa.json ---'
-          cat dist/fixture/basic/qa/package-qa.json || true
-          echo '--- render-qa.json ---'
-          cat dist/fixture/basic/qa/render-qa.json || true
+          python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          qa = Path('dist/fixture/basic/qa')
+          def load(name):
+              p = qa / name
+              return json.loads(p.read_text()) if p.exists() else None
+          build = load('build-result.json')
+          package = load('package-qa.json')
+          render = load('render-qa.json')
+          data = {
+              'workflow_status': os.environ.get('JOB_STATUS'),
+              'run_id': os.environ.get('GITHUB_RUN_ID'),
+              'engine_commit': os.environ.get('GITHUB_SHA'),
+              'build_status': build.get('status') if build else None,
+              'package_status': package.get('status') if package else None,
+              'render_status': render.get('status') if render else None,
+              'pptx_sha256': (render or package or build or {}).get('pptx_sha256'),
+              'rendered_pages': len(render.get('pages', [])) if render else None,
+              'updated_at': datetime.now(timezone.utc).isoformat(),
+          }
+          out = Path('status/fixture-smoke.json')
+          out.parent.mkdir(parents=True, exist_ok=True)
+          out.write_text(json.dumps(data, indent=2), encoding='utf-8')
+          print(json.dumps(data, indent=2))
+          PY
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git add status/fixture-smoke.json
+          git commit -m "Record fixture smoke ${GITHUB_RUN_ID}" || true
+          git push origin HEAD:main
 
       - name: Upload fixture artifacts
         if: always()
