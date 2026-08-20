@@ -1,86 +1,147 @@
 # PPT Production Engine Contract
 
-## Engine role
+## 1. Engine role
 
-This repository is a stateless production engine. It must not become a project repository.
+`PPT-Production-Engine` is a stateless production service for GitHub-hosted projects.
 
-The engine may contain:
+It owns production mechanics, not project meaning.
 
-- reusable build code;
+The engine may permanently contain:
+
+- reusable PPTX build code;
 - rendering and QA scripts;
-- input/output schemas;
-- public fixtures;
-- CI workflows;
-- third-party notices for engine dependencies.
+- request/source/output schemas;
+- trusted orchestration workflows;
+- public synthetic fixtures;
+- dependency/version/third-party notices.
 
-The engine must not permanently store:
+The engine must not permanently contain:
 
-- caller project source code;
-- private slide content;
-- private images, templates, data, or fonts;
+- caller project source code or private slide content;
+- caller images, templates, business/research data, or private fonts;
 - caller deliverables;
 - caller render evidence;
-- caller repository credentials.
+- repository access credentials.
 
-## Current fixture contract
+## 2. Primary cross-repository contract
 
-The first engine interface is a local manifest:
+The production path is:
+
+```text
+Private caller repository
+    build-request.json
+    source JSON
+          ↓ temporary authenticated checkout
+Public PPT Production Engine / GitHub-hosted runner
+          ↓ build + package QA + real render QA
+Fresh checkout of the same private caller repository
+          ↓
+final PPTX + hash-bound evidence committed back to caller
+```
+
+The public engine repository itself remains unchanged by caller builds.
+
+## 3. Caller request v1
+
+A caller request uses `contract_version = 1` and currently supports the `pptxgenjs-spec-v1` driver.
 
 ```json
 {
-  "engine_version": "0.1.0",
-  "request_id": "public-fixture-basic-001",
-  "deck": {
-    "title": "...",
-    "layout": "LAYOUT_WIDE"
-  },
+  "contract_version": "1",
+  "request_id": "example-001",
+  "driver": "pptxgenjs-spec-v1",
+  "source": "ppt/source.json",
   "output": {
-    "pptx": "dist/.../deck.pptx",
-    "qa_dir": "dist/.../qa",
-    "render_dir": "dist/.../rendered"
+    "pptx": "ppt/exports/example.pptx",
+    "evidence_dir": "ppt/qa/engine",
+    "writeback_render_evidence": true
   },
   "quality": {
     "min_slides": 6,
     "require_wide": true,
     "render_dpi": 144
-  },
-  "slides": []
+  }
 }
 ```
 
-Paths must be repository-relative and must not escape the workspace.
+Rules:
 
-## Output evidence
+- request/source/output paths are repository-relative;
+- absolute paths and `..` traversal are rejected;
+- writeback destinations must stay inside the caller repository;
+- source must be declarative JSON for the current driver;
+- caller code is not executed during v1 cross-repository builds.
 
-The fixture workflow writes:
+## 4. Isolation and credential boundary
 
-- `build-result.json`
-- `package-qa.json`
-- `render-qa.json`
-- generated `.pptx`
-- LibreOffice-exported `.pdf`
-- rendered page `.png` files
+The credential boundary is mandatory:
 
-Each QA JSON binds evidence to the generated PPTX SHA-256.
+1. Engine code is checked out first.
+2. Invocation is validated against `config/allowed-repositories.json`.
+3. Private caller input is checked out using `PPT_ENGINE_REPO_TOKEN` with `persist-credentials: false`.
+4. The caller source is parsed as data, not executed as code.
+5. Build, package QA, and render QA run without private write credentials available to caller content.
+6. Only after QA succeeds is the private repository checked out again into a fresh writeback directory.
+7. Generated output is copied into that fresh checkout.
+8. The engine refuses writeback if package QA or render QA is FAIL or if their PPTX SHA-256 does not match the generated PPTX.
+9. The fresh checkout commits and pushes the generated result to the requested private branch.
 
-## Future private-project bridge
+The built-in `GITHUB_TOKEN` is scoped to the public engine repository and is not sufficient for a different private repository. The cross-repository credential is therefore a one-time infrastructure prerequisite, not a per-build user action.
 
-Future bridge workflows should follow this model:
+## 5. Evidence contract
 
-1. Public engine workflow is the workflow owner and runner owner.
-2. A scoped credential grants access only to the intended caller repository.
-3. The engine checks out a caller build package into temporary workspace storage.
-4. The engine builds, renders, and validates locally in the temporary runner.
-5. The engine writes the final PPTX and QA evidence back to the caller repository.
-6. The public engine repository does not upload private caller artifacts as public artifacts.
+A successful build writes back at minimum:
 
-Never use a broad personal token. Prefer a GitHub App or fine-grained PAT with only the target repository permissions required for a specific bridge.
+- final `.pptx`;
+- `build-result.json`;
+- `package-qa.json`;
+- `render-qa.json`;
+- `engine-result.json`.
 
-## Non-goals
+When `writeback_render_evidence = true`, it also writes:
 
-- This engine is not a template marketplace.
-- This engine is not a long-term artifact store.
-- This engine is not a content authoring assistant.
-- This engine is not responsible for domain-specific lesson, finance, business, or research logic.
+- LibreOffice-exported PDF;
+- every Poppler-rendered page PNG.
 
-Caller repositories own domain logic. The engine owns production mechanics.
+`package-qa.json`, `render-qa.json`, and `engine-result.json` must bind to the same final PPTX SHA-256.
+
+## 6. Public artifact rule
+
+Private caller artifacts must not be uploaded as artifacts of the public engine workflow.
+
+The only allowed long-term destination for private build outputs is the authorized private caller repository (or another explicitly private destination added in a future contract).
+
+Synthetic engine fixtures are exempt because they contain no caller data.
+
+## 7. Genericity
+
+The engine must remain project-agnostic. Request/schema fields must not encode domains such as education, investment, business, recruiting, research, or a particular PPT topic.
+
+Caller projects own:
+
+- domain logic;
+- content generation;
+- project-specific templates/assets;
+- storyboards;
+- data sourcing;
+- final product decisions.
+
+The engine owns:
+
+- PPTX production;
+- generic package validation;
+- generic rendering;
+- generic evidence generation;
+- generic writeback mechanics.
+
+Additional drivers may be added later, but they must preserve the same stateless and credential-isolation rules.
+
+## 8. Acceptance definition
+
+A synthetic public fixture proves only that the engine executable stack works.
+
+The engine is not accepted for production until a real integration test completes this exact path:
+
+`Private source → Public GitHub-hosted runner → generated PPTX → real render/QA → commit back to Private repository`.
+
+Current contract version: `0.2.0`.
