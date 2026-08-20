@@ -1,12 +1,12 @@
 {
-  "workflow_status": "success",
-  "run_id": "32397424940",
-  "engine_commit": "7642146e96d63515c10a1d4ecd9c77671d83cca9",
-  "artifact_name": "ppt-ai-handoff-32397424940",
-  "request_id": "ppt-ai-handoff-smoke-001",
-  "build_status": "PASS",
-  "package_status": "PASS",
-  "render_status": "PASS",
-  "pptx_sha256": "0d1e31589e2328b788903bcebd4d90e7f6bdee1bb8e12711b4c56ed00f728a0c",
-  "rendered_pages": 6
+  "workflow_status": "failure",
+  "run_id": "32398066618",
+  "engine_commit": "f3c8f3c0a7b522f93bb94aecd8582bb17296b276",
+  "artifact_name": "ppt-ai-handoff-32398066618",
+  "request_id": null,
+  "build_status": null,
+  "package_status": null,
+  "render_status": null,
+  "pptx_sha256": null,
+  "rendered_pages": null
 }
