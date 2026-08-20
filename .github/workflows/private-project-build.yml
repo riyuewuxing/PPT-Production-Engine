@@ -1,0 +1,181 @@
+name: Private Project PPT Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: Private caller repository (owner/name)
+        required: true
+        type: string
+      source_ref:
+        description: Source ref to read
+        required: true
+        default: main
+        type: string
+      request_path:
+        description: Repository-relative build request JSON
+        required: true
+        type: string
+      writeback_branch:
+        description: Branch that receives generated PPTX and QA evidence
+        required: true
+        default: main
+        type: string
+  repository_dispatch:
+    types: [ppt-build]
+  push:
+    branches: [main]
+    paths:
+      - integration/private-smoke.json
+      - config/allowed-repositories.json
+      - engine/resolve_invocation.py
+      - engine/prepare_project_job.py
+      - engine/stage_writeback.py
+      - .github/workflows/private-project-build.yml
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  build-private-project:
+    name: Private input -> public runner -> private writeback
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout public engine
+        uses: actions/checkout@v4
+        with:
+          path: engine-repo
+          persist-credentials: false
+
+      - name: Resolve and validate invocation
+        id: invoke
+        working-directory: engine-repo
+        run: python3 engine/resolve_invocation.py
+
+      - name: Require scoped private-repository credential
+        env:
+          PPT_ENGINE_REPO_TOKEN: ${{ secrets.PPT_ENGINE_REPO_TOKEN }}
+        run: |
+          if [ -z "$PPT_ENGINE_REPO_TOKEN" ]; then
+            echo "PPT_ENGINE_REPO_TOKEN is not configured on the public engine repository." >&2
+            echo "It must be a least-privilege credential with Contents read/write only for allowlisted caller repositories." >&2
+            exit 20
+          fi
+
+      - name: Checkout private project input without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.invoke.outputs.source_repo }}
+          ref: ${{ steps.invoke.outputs.source_ref }}
+          token: ${{ secrets.PPT_ENGINE_REPO_TOKEN }}
+          path: caller-src
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install mature PPT and render dependencies
+        working-directory: engine-repo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice poppler-utils fonts-noto-cjk
+          npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Prepare isolated engine job
+        working-directory: engine-repo
+        run: |
+          python3 engine/prepare_project_job.py \
+            --caller-root ../caller-src \
+            --request '${{ steps.invoke.outputs.request_path }}' \
+            --job-root job
+
+      - name: Build PPTX with PptxGenJS
+        working-directory: engine-repo
+        run: node engine/build_pptx.mjs --manifest job/build-manifest.json
+
+      - name: Package QA
+        working-directory: engine-repo
+        run: python3 engine/qa_package.py --manifest job/build-manifest.json
+
+      - name: Real render QA with LibreOffice and Poppler
+        working-directory: engine-repo
+        run: python3 engine/render_pptx.py --manifest job/build-manifest.json
+
+      # Fresh checkout: caller build content never runs with write credentials present.
+      - name: Checkout private project writeback branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.invoke.outputs.source_repo }}
+          ref: ${{ steps.invoke.outputs.writeback_branch }}
+          token: ${{ secrets.PPT_ENGINE_REPO_TOKEN }}
+          path: caller-writeback
+          fetch-depth: 1
+          persist-credentials: true
+          submodules: false
+
+      - name: Stage generated PPTX and hash-bound QA evidence
+        working-directory: engine-repo
+        env:
+          SOURCE_REPOSITORY: ${{ steps.invoke.outputs.source_repo }}
+          SOURCE_REF: ${{ steps.invoke.outputs.source_ref }}
+        run: |
+          python3 engine/stage_writeback.py \
+            --source-caller-root ../caller-src \
+            --writeback-root ../caller-writeback \
+            --request '${{ steps.invoke.outputs.request_path }}' \
+            --job-root job
+
+      - name: Commit result back to the private project
+        working-directory: caller-writeback
+        env:
+          WRITEBACK_BRANCH: ${{ steps.invoke.outputs.writeback_branch }}
+        run: |
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git config core.hooksPath /dev/null
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No writeback changes; result is already current.'
+            exit 0
+          fi
+          REQUEST_ID=$(python3 - <<'PY'
+          import json, pathlib
+          p = pathlib.Path('../caller-src') / '${{ steps.invoke.outputs.request_path }}'
+          print(json.loads(p.read_text(encoding='utf-8'))['request_id'])
+          PY
+          )
+          git commit -m "PPT engine result: ${REQUEST_ID}"
+          git push origin "HEAD:${WRITEBACK_BRANCH}"
+
+      - name: Report only non-sensitive result metadata
+        if: always()
+        working-directory: engine-repo
+        run: |
+          if [ -f job/output/qa/package-qa.json ]; then
+            python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for name in ('package-qa.json', 'render-qa.json'):
+              p = Path('job/output/qa') / name
+              if p.exists():
+                  d = json.loads(p.read_text())
+                  print(name, {'status': d.get('status'), 'pptx_sha256': d.get('pptx_sha256'), 'failures': d.get('failures', [])})
+          PY
+          fi
+
+      # Deliberately no upload-artifact step: private caller content must not become a public-engine artifact.

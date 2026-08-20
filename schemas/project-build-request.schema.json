@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/riyuewuxing/PPT-Production-Engine/schemas/project-build-request.schema.json",
+  "title": "PPT Production Engine project build request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "request_id", "driver", "source", "output"],
+  "properties": {
+    "contract_version": {"const": "1"},
+    "request_id": {"type": "string", "minLength": 1, "maxLength": 120},
+    "driver": {"const": "pptxgenjs-spec-v1"},
+    "source": {"type": "string", "minLength": 1},
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pptx", "evidence_dir"],
+      "properties": {
+        "pptx": {"type": "string", "minLength": 1},
+        "evidence_dir": {"type": "string", "minLength": 1},
+        "writeback_render_evidence": {"type": "boolean", "default": true}
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_slides": {"type": "integer", "minimum": 1},
+        "require_wide": {"type": "boolean", "default": true},
+        "render_dpi": {"type": "integer", "minimum": 72, "maximum": 300, "default": 144}
+      }
+    }
+  }
+}
