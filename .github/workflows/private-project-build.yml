@@ -26,7 +26,7 @@ on:
   push:
     branches: [main]
     paths:
-      - integration/private-smoke.json
+      - requests/current.json
       - config/allowed-repositories.json
       - engine/resolve_invocation.py
       - engine/prepare_project_job.py
@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: Checkout public engine
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: engine-repo
           persist-credentials: false
@@ -72,7 +72,7 @@ jobs:
           fi
 
       - name: Checkout private project input without persisted credentials
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ steps.invoke.outputs.source_repo }}
           ref: ${{ steps.invoke.outputs.source_ref }}
@@ -121,7 +121,7 @@ jobs:
 
       # Fresh checkout: caller build content never runs with write credentials present.
       - name: Checkout private project writeback branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ steps.invoke.outputs.source_repo }}
           ref: ${{ steps.invoke.outputs.writeback_branch }}
@@ -185,7 +185,7 @@ jobs:
       # A fresh public checkout writes only a non-sensitive workflow status receipt.
       - name: Checkout engine status writer
         if: always()
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: main
           path: engine-status
@@ -201,9 +201,9 @@ jobs:
           SOURCE_REF: ${{ steps.invoke.outputs.source_ref }}
           REQUEST_PATH: ${{ steps.invoke.outputs.request_path }}
         run: |
-          python3 engine/write_public_status.py --work-root ../engine-repo --output status/private-smoke.json
+          python3 engine/write_public_status.py --work-root ../engine-repo --output status/last-run.json
           git config user.name 'ppt-production-engine[bot]'
           git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
-          git add status/private-smoke.json
+          git add status/last-run.json
           git commit -m "Record private bridge run ${GITHUB_RUN_ID}" || exit 0
           git push origin HEAD:main
