@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/riyuewuxing/PPT-Production-Engine/schemas/build-manifest.schema.json",
+  "title": "PPT Production Engine Build Manifest",
+  "type": "object",
+  "required": ["engine_version", "request_id", "deck", "output", "quality", "slides"],
+  "additionalProperties": false,
+  "properties": {
+    "engine_version": { "type": "string" },
+    "request_id": { "type": "string", "minLength": 1 },
+    "deck": {
+      "type": "object",
+      "required": ["title", "layout"],
+      "additionalProperties": true,
+      "properties": {
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "author": { "type": "string" },
+        "company": { "type": "string" },
+        "subject": { "type": "string" },
+        "language": { "type": "string" },
+        "layout": { "enum": ["LAYOUT_WIDE", "LAYOUT_4X3"] },
+        "theme": { "type": "object" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["pptx", "qa_dir", "render_dir"],
+      "additionalProperties": false,
+      "properties": {
+        "pptx": { "type": "string", "pattern": "^[^/].*\\.pptx$" },
+        "qa_dir": { "type": "string", "pattern": "^[^/].*" },
+        "render_dir": { "type": "string", "pattern": "^[^/].*" }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_slides": { "type": "integer", "minimum": 1 },
+        "require_wide": { "type": "boolean" },
+        "render_dpi": { "type": "integer", "minimum": 72, "maximum": 300 }
+      }
+    },
+    "slides": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["type", "title"],
+        "additionalProperties": true,
+        "properties": {
+          "type": {
+            "enum": ["title", "section", "bullets", "two_column", "timeline", "checklist"]
+          },
+          "title": { "type": "string" }
+        }
+      }
+    }
+  }
+}
