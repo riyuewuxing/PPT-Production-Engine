@@ -1,17 +1,17 @@
 {
   "name": "ppt-production-engine",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": false,
   "type": "module",
-  "description": "Stateless PPTX production, rendering, and QA engine for GitHub-based projects.",
+  "description": "Stateless PPTX production, rendering, and QA engine for AI-orchestrated GitHub projects.",
   "license": "Apache-2.0",
   "scripts": {
     "build:fixture": "node engine/build_pptx.mjs --manifest fixtures/basic/build-manifest.json",
     "qa:fixture": "python3 engine/qa_package.py --manifest fixtures/basic/build-manifest.json",
     "render:fixture": "python3 engine/render_pptx.py --manifest fixtures/basic/build-manifest.json",
-    "build:job": "node engine/build_pptx.mjs --manifest job/build-manifest.json",
-    "qa:job": "python3 engine/qa_package.py --manifest job/build-manifest.json",
-    "render:job": "python3 engine/render_pptx.py --manifest job/build-manifest.json"
+    "build:handoff": "node engine/build_pptx.mjs --manifest handoff/current/build-manifest.json",
+    "qa:handoff": "python3 engine/qa_package.py --manifest handoff/current/build-manifest.json",
+    "render:handoff": "python3 engine/render_pptx.py --manifest handoff/current/build-manifest.json"
   },
   "dependencies": {
     "pptxgenjs": "4.0.0"
