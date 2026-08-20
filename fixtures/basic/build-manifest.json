@@ -1,0 +1,76 @@
+{
+  "engine_version": "0.1.0",
+  "request_id": "public-fixture-basic-001",
+  "deck": {
+    "title": "PPT Production Engine Fixture",
+    "subtitle": "Public smoke test: build, render, QA",
+    "author": "PPT Production Engine",
+    "company": "riyuewuxing",
+    "subject": "Fixture deck for stateless PPT generation",
+    "language": "en-US",
+    "layout": "LAYOUT_WIDE",
+    "theme": {
+      "headFontFace": "Aptos Display",
+      "bodyFontFace": "Aptos",
+      "lang": "en-US"
+    }
+  },
+  "output": {
+    "pptx": "dist/fixture/basic/ppt-production-engine-fixture.pptx",
+    "qa_dir": "dist/fixture/basic/qa",
+    "render_dir": "dist/fixture/basic/rendered"
+  },
+  "quality": {
+    "min_slides": 6,
+    "require_wide": true,
+    "render_dpi": 144
+  },
+  "slides": [
+    {
+      "type": "title",
+      "title": "PPT Production Engine",
+      "subtitle": "Stateless PPTX build → render → QA"
+    },
+    {
+      "type": "section",
+      "eyebrow": "Role",
+      "title": "A build engine, not a project repository",
+      "body": "The engine owns reusable machinery only. Caller repositories own project content and final deliverables."
+    },
+    {
+      "type": "bullets",
+      "title": "Build contract",
+      "bullets": [
+        "Read a manifest",
+        "Generate a standards-compatible PPTX",
+        "Render every page through a real presentation renderer",
+        "Write hash-bound QA evidence",
+        "Return artifacts without storing project state"
+      ]
+    },
+    {
+      "type": "two_column",
+      "title": "Separation of concerns",
+      "left_title": "Caller project",
+      "left_items": ["Content", "Images", "Templates", "Private data", "Final outputs"],
+      "right_title": "Production engine",
+      "right_items": ["Build tools", "Render tools", "QA gates", "Schemas", "Public fixture"]
+    },
+    {
+      "type": "timeline",
+      "title": "Fixture pipeline",
+      "steps": ["Manifest", "PPTX", "Package QA", "LibreOffice render", "Evidence"]
+    },
+    {
+      "type": "checklist",
+      "title": "Smoke test expected result",
+      "items": [
+        "PPTX exists and is a valid ZIP package",
+        "Slide count matches the manifest",
+        "Canvas is 16:9 wide",
+        "LibreOffice exports a PDF",
+        "Every rendered page has a SHA-256 hash"
+      ]
+    }
+  ]
+}
