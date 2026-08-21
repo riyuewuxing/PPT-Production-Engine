@@ -32,7 +32,7 @@ jobs:
 
       - name: Cheap contract preflight
         run: |
-          python -m py_compile handoff/run002-v3/refine_failed_assets.py handoff/run002-v3/refine_iteration3.py handoff/run002-v3/refine_iteration4.py handoff/run002-v3/refine_iteration5.py handoff/run002-v3/refine_iteration6.py engine/semantic_svg_lint.py
+          python -m py_compile handoff/run002-v3/refine_failed_assets.py handoff/run002-v3/refine_iteration3.py handoff/run002-v3/refine_iteration4.py handoff/run002-v3/refine_iteration5.py handoff/run002-v3/refine_iteration6.py handoff/run002-v3/refine_iteration7.py engine/semantic_svg_lint.py
           node --check handoff/run002-v3/generate_assets.js
           python - <<'PY'
           import json, sys
@@ -46,7 +46,7 @@ jobs:
           bad_receipt = "root/'assets/" + "asset-render-receipt.json'"
           if bad_receipt in workflow:
               failures.append('receipt path duplicates assets/assets')
-          if 'refine_iteration6.py' not in workflow:
+          if 'refine_iteration7.py' not in workflow:
               failures.append('latest refinement is not wired into workflow')
           if failures:
               print('\n'.join(failures)); sys.exit(2)
@@ -69,6 +69,7 @@ jobs:
           python handoff/run002-v3/refine_iteration4.py
           python handoff/run002-v3/refine_iteration5.py
           python handoff/run002-v3/refine_iteration6.py
+          python handoff/run002-v3/refine_iteration7.py
 
       - name: Semantic geometry preflight
         run: |
