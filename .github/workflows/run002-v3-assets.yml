@@ -43,7 +43,8 @@ jobs:
           failures=[]
           if package.get('type') == 'module' and 'require(' in source and '.generate_assets.runtime.cjs' not in workflow:
               failures.append('CommonJS generator in ESM repo is not executed through explicit .cjs compatibility copy')
-          if "root/'assets/asset-render-receipt.json'" in workflow:
+          bad_receipt = "root/'assets/" + "asset-render-receipt.json'"
+          if bad_receipt in workflow:
               failures.append('receipt path duplicates assets/assets')
           if 'refine_iteration6.py' not in workflow:
               failures.append('latest refinement is not wired into workflow')
