@@ -1,13 +1,9 @@
 {
   "workflow_status": "success",
-  "run_id": "32472473317",
-  "engine_commit": "db09cd4f5ee1b93269744918c15c7ee0ef556b96",
+  "run_id": "32473502686",
+  "engine_commit": "15eb0e8668520d62c9e9e913e90820c7879320fe",
   "asset_stage_status": "PASS",
   "asset_count": 15,
-  "artifact_name": "run002-v3-assets-32472473317",
-  "artifact_id": 9443060287,
-  "artifact_sha256": "236a0869cfd99665e494a7ca90feea200bdf5df8fc290e785ed6e0a015573b66",
-  "assistant_visual_review": "PASS",
-  "visual_review_evidence": "status/run002-v3-asset-visual-review.json",
-  "scope": "ASSET_GATE_ONLY"
+  "artifact_name": "run002-v3-assets-32473502686",
+  "assistant_visual_review": "PENDING"
 }
