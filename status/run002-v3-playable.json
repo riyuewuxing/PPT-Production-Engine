@@ -1,14 +1,11 @@
 {
   "workflow_status": "failure",
-  "run_id": "32475898653",
-  "engine_commit": "4340a1d3d23356abcb941d7b775438cbd73542d4",
-  "asset_stage_status": "PASS",
-  "asset_count": 15,
-  "assistant_asset_visual_review_reused_by_exact_hash": true,
+  "run_id": "32476131460",
+  "engine_commit": "0e13014513d69cc0f4bc4174f4c5e52acfba2bf7",
   "playable_status": null,
   "v3_playable_pptx_sha256": null,
   "actual_animation_slides": null,
   "rendered_pages": null,
   "target_powerpoint_playback": "NOT_RUN_REQUIRED_FOR_FINAL",
-  "artifact_name": "run002-v3-playable-32475898653"
+  "artifact_name": "run002-v3-playable-32476131460"
 }
