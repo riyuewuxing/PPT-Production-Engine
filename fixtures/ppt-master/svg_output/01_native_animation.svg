@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect x="0" y="0" width="1280" height="720" fill="#F8FAFC"/>
+  <g id="title-block">
+    <text x="90" y="105" font-family="Noto Sans CJK SC" font-size="42" font-weight="700" fill="#17212B">PPT Master Native Animation</text>
+    <text x="90" y="150" font-family="Noto Sans CJK SC" font-size="22" fill="#64748B">Top-level SVG groups become editable PowerPoint objects.</text>
+  </g>
+  <g id="work-channel">
+    <rect x="100" y="260" width="300" height="150" rx="24" fill="#EAF3FF" stroke="#2B6CB0" stroke-width="3"/>
+    <text x="250" y="330" text-anchor="middle" font-family="Noto Sans CJK SC" font-size="30" font-weight="700" fill="#2B6CB0">做功 W</text>
+    <text x="250" y="372" text-anchor="middle" font-family="Noto Sans CJK SC" font-size="20" fill="#465A69">on-click reveal 1</text>
+  </g>
+  <g id="heat-channel">
+    <rect x="490" y="260" width="300" height="150" rx="24" fill="#FFF1E7" stroke="#E85D3F" stroke-width="3"/>
+    <text x="640" y="330" text-anchor="middle" font-family="Noto Sans CJK SC" font-size="30" font-weight="700" fill="#E85D3F">热传递 Q</text>
+    <text x="640" y="372" text-anchor="middle" font-family="Noto Sans CJK SC" font-size="20" fill="#465A69">on-click reveal 2</text>
+  </g>
+  <g id="state-change">
+    <rect x="880" y="260" width="300" height="150" rx="24" fill="#F2F0FA" stroke="#61558A" stroke-width="3"/>
+    <text x="1030" y="330" text-anchor="middle" font-family="Noto Sans CJK SC" font-size="30" font-weight="700" fill="#61558A">ΔU</text>
+    <text x="1030" y="372" text-anchor="middle" font-family="Noto Sans CJK SC" font-size="20" fill="#465A69">on-click reveal 3</text>
+  </g>
+  <g id="relation-line">
+    <path d="M400 335 L490 335 M790 335 L880 335" fill="none" stroke="#94A3B8" stroke-width="5"/>
+  </g>
+</svg>
