@@ -5,13 +5,16 @@ Generated presentation SVGs may annotate important geometry using `data-*`
 attributes. This linter catches deterministic failures before raster render and
 human review: container escapes, outside->inside flow failures, and conservation
 count mismatches. It deliberately does not attempt subjective visual scoring.
+
+Containment is shape-aware for rect/circle/ellipse instead of treating every
+boundary as its rectangular bounding box. This matters for rounded scientific
+systems where an object may sit inside the bbox yet visibly cross the boundary.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import re
-import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,14 +34,14 @@ class Box:
     @property
     def y2(self) -> float: return self.y + self.h
 
+    def corners(self) -> tuple[tuple[float, float], ...]:
+        return ((self.x,self.y),(self.x2,self.y),(self.x,self.y2),(self.x2,self.y2))
+
     def contains_point(self, x: float, y: float, margin: float = 0.0) -> bool:
         return self.x + margin <= x <= self.x2 - margin and self.y + margin <= y <= self.y2 - margin
 
     def contains_box(self, other: "Box", margin: float = 0.0) -> bool:
-        return (
-            other.x >= self.x + margin and other.y >= self.y + margin
-            and other.x2 <= self.x2 - margin and other.y2 <= self.y2 - margin
-        )
+        return all(self.contains_point(x,y,margin) for x,y in other.corners())
 
 
 def local(tag: str) -> str:
@@ -95,6 +98,23 @@ def element_box(node: ET.Element | None) -> Box | None:
     return None
 
 
+def shape_contains_point(container: ET.Element, x: float, y: float, margin: float = 0.0) -> bool:
+    tag=local(container.tag)
+    if tag=="circle":
+        cx,cy,r=num(container.get("cx")),num(container.get("cy")),num(container.get("r"))-margin
+        return r >= 0 and (x-cx)**2 + (y-cy)**2 <= r**2
+    if tag=="ellipse":
+        cx,cy=num(container.get("cx")),num(container.get("cy"))
+        rx,ry=num(container.get("rx"))-margin,num(container.get("ry"))-margin
+        return rx>0 and ry>0 and ((x-cx)/rx)**2 + ((y-cy)/ry)**2 <= 1.0
+    box=element_box(container)
+    return box.contains_point(x,y,margin) if box is not None else False
+
+
+def shape_contains_box(container: ET.Element, other: Box, margin: float = 0.0) -> bool:
+    return all(shape_contains_point(container,x,y,margin) for x,y in other.corners())
+
+
 def point(node: ET.Element, attr: str) -> tuple[float,float] | None:
     raw=node.get(attr)
     if not raw: return None
@@ -125,22 +145,22 @@ def lint(path: Path) -> dict[str, object]:
         role=node.get("data-role")
         container_id=node.get("data-container")
         if container_id and role in {"contained-object","particle-set"}:
-            cid=nodes.get(container_id); obox=element_box(node); cbox=element_box(cid)
+            container=nodes.get(container_id); obox=element_box(node)
             margin=num(node.get("data-container-margin"),0)
-            if obox is None or cbox is None:
+            if obox is None or container is None:
                 bad("containment",f"cannot resolve {node.get('id')} inside {container_id}")
-            elif not cbox.contains_box(obox,margin):
+            elif not shape_contains_box(container,obox,margin):
                 bad("containment",f"{node.get('id')} extends outside {container_id}")
             else: ok("containment",f"{node.get('id')} inside {container_id}")
 
         boundary_id=node.get("data-cross-boundary")
         if role=="flow-arrow" and boundary_id:
-            bbox=element_box(nodes.get(boundary_id)); pts=line_points(node); margin=num(node.get("data-target-margin"),2)
-            if bbox is None or pts is None:
+            boundary=nodes.get(boundary_id); pts=line_points(node); margin=num(node.get("data-target-margin"),2)
+            if boundary is None or pts is None:
                 bad("flow",f"cannot resolve {node.get('id')} / {boundary_id}")
             else:
                 start,end=pts
-                if bbox.contains_point(*start) or not bbox.contains_point(*end,margin):
+                if shape_contains_point(boundary,*start) or not shape_contains_point(boundary,*end,margin):
                     bad("flow",f"{node.get('id')} must start outside and end inside {boundary_id}")
                 else: ok("flow",f"{node.get('id')} crosses {boundary_id} outside->inside")
 
