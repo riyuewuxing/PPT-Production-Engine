@@ -1,14 +1,18 @@
 {
-  "workflow_status": "failure",
-  "run_id": "32450961407",
-  "engine_commit": "d5a94114756e7f91a97f8c185b41009045a7833f",
-  "asset_status": null,
-  "asset_count": null,
-  "drivers": null,
-  "build_status": null,
-  "package_status": null,
-  "render_status": null,
-  "pptx_sha256": null,
-  "rendered_pages": null,
-  "artifact_name": "ppt-engine-asset-pipeline-32450961407"
+  "workflow_status": "success",
+  "run_id": "32451061865",
+  "engine_commit": "5f7199569046c5cb244c544c03a4dc51d41f425d",
+  "asset_status": "PASS",
+  "asset_count": 3,
+  "drivers": [
+    "graphviz",
+    "matplotlib",
+    "typst-cetz"
+  ],
+  "build_status": "PASS",
+  "package_status": "PASS",
+  "render_status": "PASS",
+  "pptx_sha256": "90c88ca13be6d71fc3f2f1599960b1644015df30422e06f5e06251724e97cb73",
+  "rendered_pages": 4,
+  "artifact_name": "ppt-engine-asset-pipeline-32451061865"
 }
