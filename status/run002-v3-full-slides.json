@@ -1,0 +1,9 @@
+{
+  "workflow_status": "success",
+  "run_id": "32472863893",
+  "engine_commit": "432dc2576729a26bd83fc2868adfd976d67912d6",
+  "slide_stage_status": "PASS",
+  "slide_count": 15,
+  "artifact_name": "run002-v3-full-slides-32472863893",
+  "assistant_visual_review": "PENDING"
+}
