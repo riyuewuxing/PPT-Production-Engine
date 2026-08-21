@@ -1,0 +1,10 @@
+{
+  "contract_version": "1",
+  "mode": "svg-to-pptx",
+  "ppt_master_root": "vendor/ppt-master",
+  "project": "fixtures/ppt-master",
+  "animation_config": "animations.json",
+  "output": "dist/ppt-master-smoke/native-animation.pptx",
+  "readback_dir": "dist/ppt-master-smoke/readback",
+  "qa": "dist/ppt-master-smoke/ppt-master-qa.json"
+}
