@@ -1,11 +1,11 @@
 {
   "workflow_status": "failure",
-  "run_id": "32476131460",
-  "engine_commit": "0e13014513d69cc0f4bc4174f4c5e52acfba2bf7",
+  "run_id": "32476295751",
+  "engine_commit": "c2927197a3df6d55f79b6ca11a352af18b5f2a35",
   "playable_status": null,
   "v3_playable_pptx_sha256": null,
   "actual_animation_slides": null,
   "rendered_pages": null,
   "target_powerpoint_playback": "NOT_RUN_REQUIRED_FOR_FINAL",
-  "artifact_name": "run002-v3-playable-32476131460"
+  "artifact_name": "run002-v3-playable-32476295751"
 }
