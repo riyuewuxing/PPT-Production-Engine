@@ -1,5 +1,13 @@
 {
   "engine_contract": "0.4.0",
+  "verification": {
+    "asset_pipeline_run_id": 32451448766,
+    "engine_commit": "75b9e9d168e71d3009104ed469921a59a03d32b2",
+    "pptx_sha256": "02eece91cee9ae7ad5bad94d0b24712d85e36efd81cefe70299b2b383ada729a",
+    "asset_count": 3,
+    "rendered_pages": 4,
+    "assistant_visual_review": "PASS"
+  },
   "capabilities": [
     {
       "id": "pptxgenjs-deck",
@@ -11,7 +19,7 @@
     {
       "id": "typst-cetz",
       "kind": "scientific-diagram",
-      "status": "migration-smoke",
+      "status": "verified",
       "inputs": ["typst-source"],
       "outputs": ["svg", "png-preview"],
       "executor": "python engine/render_asset.py"
@@ -19,7 +27,7 @@
     {
       "id": "graphviz",
       "kind": "diagram",
-      "status": "migration-smoke",
+      "status": "verified",
       "inputs": ["dot-source"],
       "outputs": ["svg", "png-preview"],
       "executor": "python engine/render_asset.py"
@@ -27,7 +35,7 @@
     {
       "id": "matplotlib",
       "kind": "chart",
-      "status": "migration-smoke",
+      "status": "verified",
       "inputs": ["declarative-json"],
       "outputs": ["svg", "png-preview"],
       "executor": "python engine/render_asset.py"
