@@ -7,13 +7,13 @@
   "assistant_asset_visual_review_reused_by_exact_hash": true,
   "playable_status": "PASS_PLAYABLE_PRE_TARGET_PLAYER",
   "v3_playable_pptx_sha256": "dae7306d644f45a344f20dd654e8f1e2e0eecb12fb619b07682adcaa82c6a459",
-  "actual_animation_slides": [
-    7,
-    13,
-    15
-  ],
+  "actual_animation_slides": [7, 13, 15],
   "animation_state_count": 13,
   "rendered_pages": 15,
+  "assistant_playable_visual_review": "PASS",
+  "assistant_animation_state_visual_review": "PASS",
+  "assistant_playable_visual_review_receipt": "status/run002-v3-playable-visual-review.json",
+  "assistant_playable_visual_review_pptx_sha256": "dae7306d644f45a344f20dd654e8f1e2e0eecb12fb619b07682adcaa82c6a459",
   "target_powerpoint_playback": "NOT_RUN_REQUIRED_FOR_FINAL",
   "artifact_name": "run002-v3-playable-32479008296"
 }
