@@ -26,6 +26,7 @@ ANIM = PROJECT / "animations.json"
 QA = ROOT / "dist/run002-v3/playable-qa/playable-project-prep.json"
 
 PPT_SAFE_FONT = "Microsoft YaHei"
+PAGE_BOUNDS = "0 0 1200 560"
 
 
 def die(message: str) -> None:
@@ -50,6 +51,25 @@ def group_wrap(text: str, group_id: str, inner_pattern: str, label: str) -> str:
     return text[:m.start()] + f'<g id="{group_id}">' + m.group(0) + '</g>' + text[m.end():]
 
 
+def add_bounds_to_groups(text: str) -> tuple[str, int]:
+    """Add required PPT Master bounds metadata to group tags.
+
+    PPT Master rejects visible root-level groups that lack data-pptx-bounds. For
+    this flat full-page route, using the page design zone for groups is a safe
+    compatibility fallback; final geometry is still visually reviewed after
+    native conversion. We add it to all unbounded groups so nested animation
+    groups and future promoted groups are deterministic too.
+    """
+    def repl(match: re.Match[str]) -> str:
+        tag = match.group(0)
+        if 'data-pptx-bounds=' in tag:
+            return tag
+        if tag.endswith('/>'):
+            return tag[:-2] + f' data-pptx-bounds="{PAGE_BOUNDS}"/>'
+        return tag[:-1] + f' data-pptx-bounds="{PAGE_BOUNDS}">'
+    return re.subn(r'<g(?=[\s>/])[^>]*>', repl, text)
+
+
 def normalize_for_ppt_master(text: str, *, label: str) -> tuple[str, dict[str, int]]:
     """Make reviewed SVG syntax compatible with strict PPT Master export.
 
@@ -63,17 +83,9 @@ def normalize_for_ppt_master(text: str, *, label: str) -> tuple[str, dict[str, i
         counts[key] = counts.get(key, 0) + n
         return new
 
-    # PPT Master currently treats dominant-baseline on <text> as unsupported.
-    # Assets use explicit x/y coordinates; final positioning is rechecked after
-    # playable render, so removing this is safer than weakening converter gates.
     text = sub(r'\s+dominant-baseline="[^"]*"', '', 'removed_dominant_baseline', text)
-
-    # Normalize CSS-ish intermediate weights to explicit PPT-safe integer steps.
     text = sub(r'font-weight="650"', 'font-weight="700"', 'font_weight_650_to_700', text)
     text = sub(r'font-weight="750"', 'font-weight="700"', 'font_weight_750_to_700', text)
-
-    # Use a PPT-safe Chinese font for native DrawingML output. The source assets
-    # remain unchanged; this is the target-player conversion copy.
     text = sub(
         r'font-family="Noto Sans CJK SC, Noto Sans, sans-serif"',
         f'font-family="{PPT_SAFE_FONT}"',
@@ -87,17 +99,19 @@ def normalize_for_ppt_master(text: str, *, label: str) -> tuple[str, dict[str, i
         text,
     )
 
-    # Make paint recommendations deterministic; this was advisory but cheap.
     text = text.replace('#22354f', '#22354F')
     counts['uppercase_shadow_color'] = counts.get('uppercase_shadow_color', 0)
 
     if 'data-pptx-page-role=' not in text:
-        text = text.replace('<svg ', '<svg data-pptx-page-role="slide" ', 1)
+        text = text.replace('<svg ', '<svg data-pptx-page-role="content" ', 1)
         counts['added_root_page_role'] = 1
     else:
+        text = re.sub(r'data-pptx-page-role="[^"]+"', 'data-pptx-page-role="content"', text, count=1)
         counts['added_root_page_role'] = 0
 
-    # Fail fast if known blocking unsupported syntax remains.
+    text, group_bounds = add_bounds_to_groups(text)
+    counts['added_group_bounds'] = group_bounds
+
     if 'dominant-baseline=' in text:
         die(f"{label}: dominant-baseline remained after normalization")
     if 'font-weight="650"' in text or 'font-weight="750"' in text:
@@ -118,8 +132,6 @@ def slide07(text: str) -> str:
 
 
 def slide13(text: str) -> str:
-    # Insert explicit presenter-paced question statements and answer reveals.
-    # The original asset intentionally contains A-D rails and answer boxes only.
     if 'id="statement-A"' in text:
         return text
     statements = f'''
@@ -193,28 +205,9 @@ def main() -> int:
         "version": 1,
         "defaults": {"transition": {"effect": "fade", "duration": 0.25}},
         "slides": {
-            "07-s07-energy-ledger": {
-                "groups": {
-                    "work-path": {"effect": "entrance_fade", "trigger": "on-click", "order": 1, "duration": 0.25},
-                    "heat-path": {"effect": "entrance_fade", "trigger": "on-click", "order": 2, "duration": 0.25},
-                    "formula-final": {"effect": "entrance_fade", "trigger": "on-click", "order": 3, "duration": 0.25}
-                }
-            },
-            "13-s13-concept-check": {
-                "groups": {
-                    "question-statements": {"effect": "entrance_fade", "trigger": "on-click", "order": 1, "duration": 0.25},
-                    "answer-reveal": {"effect": "entrance_fade", "trigger": "on-click", "order": 2, "duration": 0.25}
-                }
-            },
-            "15-s15-synthesis-two-channels": {
-                "groups": {
-                    "work-path": {"effect": "entrance_fade", "trigger": "on-click", "order": 1, "duration": 0.25},
-                    "heat-path": {"effect": "entrance_fade", "trigger": "on-click", "order": 2, "duration": 0.25},
-                    "delta-u-target": {"effect": "entrance_fade", "trigger": "on-click", "order": 3, "duration": 0.25},
-                    "observable-result": {"effect": "entrance_fade", "trigger": "on-click", "order": 4, "duration": 0.25},
-                    "bottom-chain": {"effect": "entrance_fade", "trigger": "on-click", "order": 5, "duration": 0.25}
-                }
-            }
+            "07-s07-energy-ledger": {"groups": {"work-path": {"effect": "entrance_fade", "trigger": "on-click", "order": 1, "duration": 0.25}, "heat-path": {"effect": "entrance_fade", "trigger": "on-click", "order": 2, "duration": 0.25}, "formula-final": {"effect": "entrance_fade", "trigger": "on-click", "order": 3, "duration": 0.25}}},
+            "13-s13-concept-check": {"groups": {"question-statements": {"effect": "entrance_fade", "trigger": "on-click", "order": 1, "duration": 0.25}, "answer-reveal": {"effect": "entrance_fade", "trigger": "on-click", "order": 2, "duration": 0.25}}},
+            "15-s15-synthesis-two-channels": {"groups": {"work-path": {"effect": "entrance_fade", "trigger": "on-click", "order": 1, "duration": 0.25}, "heat-path": {"effect": "entrance_fade", "trigger": "on-click", "order": 2, "duration": 0.25}, "delta-u-target": {"effect": "entrance_fade", "trigger": "on-click", "order": 3, "duration": 0.25}, "observable-result": {"effect": "entrance_fade", "trigger": "on-click", "order": 4, "duration": 0.25}, "bottom-chain": {"effect": "entrance_fade", "trigger": "on-click", "order": 5, "duration": 0.25}}}
         }
     }
     ANIM.write_text(json.dumps(animations, ensure_ascii=False, indent=2), encoding="utf-8")
