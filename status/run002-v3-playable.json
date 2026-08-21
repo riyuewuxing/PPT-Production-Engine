@@ -1,0 +1,11 @@
+{
+  "workflow_status": "failure",
+  "run_id": "32475769049",
+  "engine_commit": "614e619f1aca624178bff8011ced4ac7627c533f",
+  "playable_status": null,
+  "v3_playable_pptx_sha256": null,
+  "actual_animation_slides": null,
+  "rendered_pages": null,
+  "target_powerpoint_playback": "NOT_RUN_REQUIRED_FOR_FINAL",
+  "artifact_name": "run002-v3-playable-32475769049"
+}
