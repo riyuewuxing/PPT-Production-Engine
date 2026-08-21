@@ -1,0 +1,214 @@
+name: Run002 V3 Slide Composition
+
+on:
+  push:
+    branches: [run002-v3-deck]
+    paths:
+      - handoff/run002-v3/**
+      - engine/compose_svg_slide_deck.py
+      - .github/workflows/run002-v3-slide-composition.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  full-slides:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cheap contract preflight
+        run: |
+          python -m py_compile \
+            handoff/run002-v3/refine_failed_assets.py \
+            handoff/run002-v3/refine_iteration3.py \
+            handoff/run002-v3/refine_iteration4.py \
+            handoff/run002-v3/refine_iteration5.py \
+            handoff/run002-v3/refine_iteration6.py \
+            handoff/run002-v3/refine_iteration7.py \
+            engine/compose_svg_slide_deck.py
+          node --check handoff/run002-v3/generate_assets.js
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          manifest=json.loads(Path('handoff/run002-v3/deck-manifest.json').read_text(encoding='utf-8'))
+          approval=json.loads(Path('status/run002-v3-asset-visual-review.json').read_text(encoding='utf-8'))
+          failures=[]
+          if approval.get('status')!='PASS_ASSET_GATE_ONLY': failures.append('asset visual approval is not PASS')
+          if approval.get('asset_count')!=15: failures.append('approved asset count is not 15')
+          if len(manifest.get('slides',[]))!=15: failures.append('deck manifest slide count is not 15')
+          if manifest.get('viewport')!={'x':50,'y':110,'width':1500,'height':700}: failures.append('unexpected approved-asset viewport')
+          if failures:
+              print('\n'.join(failures)); sys.exit(2)
+          print('slide composition contract preflight PASS')
+          PY
+
+      - name: Install SVG render dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends librsvg2-bin fonts-noto-cjk
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow
+
+      - name: Regenerate exact approved assets
+        run: |
+          cp handoff/run002-v3/generate_assets.js handoff/run002-v3/.generate_assets.runtime.cjs
+          node handoff/run002-v3/.generate_assets.runtime.cjs
+          rm -f handoff/run002-v3/.generate_assets.runtime.cjs
+          python handoff/run002-v3/refine_failed_assets.py
+          python handoff/run002-v3/refine_iteration3.py
+          python handoff/run002-v3/refine_iteration4.py
+          python handoff/run002-v3/refine_iteration5.py
+          python handoff/run002-v3/refine_iteration6.py
+          python handoff/run002-v3/refine_iteration7.py
+
+      - name: Verify exact approved asset hashes
+        run: |
+          python - <<'PY'
+          import hashlib, json, sys
+          from pathlib import Path
+          approval=json.loads(Path('status/run002-v3-asset-visual-review.json').read_text(encoding='utf-8'))
+          manifest=json.loads(Path('handoff/run002-v3/deck-manifest.json').read_text(encoding='utf-8'))
+          def sha(p):
+              h=hashlib.sha256(); h.update(p.read_bytes()); return h.hexdigest()
+          failures=[]; rows=[]
+          expected={int(x['slide']):x for x in approval['assets']}
+          for row in manifest['slides']:
+              slide=int(row['slide']); p=Path('dist/run002-v3/assets/svg')/row['source']
+              actual=sha(p) if p.is_file() else None
+              want=expected[slide]['svg_sha256']
+              ok=actual==want
+              rows.append({'slide':slide,'source':row['source'],'expected_svg_sha256':want,'actual_svg_sha256':actual,'match':ok})
+              if not ok: failures.append(f"slide {slide}: approved SVG hash mismatch")
+          out={'status':'PASS' if not failures else 'FAIL','assets':rows,'failures':failures}
+          Path('dist/run002-v3').mkdir(parents=True,exist_ok=True)
+          Path('dist/run002-v3/approved-asset-hash-qa.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          if failures: sys.exit(2)
+          PY
+
+      - name: Compose 15 full-slide SVGs
+        run: python engine/compose_svg_slide_deck.py --manifest handoff/run002-v3/deck-manifest.json
+
+      - name: Full-slide structural QA
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root=Path('dist/run002-v3/slides')
+          receipt=json.loads((root/'composition-receipt.json').read_text(encoding='utf-8'))
+          failures=[]; rows=[]
+          files=sorted((root/'svg').glob('slide-*.svg'))
+          if len(files)!=15: failures.append(f'expected 15 slides, got {len(files)}')
+          for idx,p in enumerate(files,1):
+              svg=ET.parse(p).getroot()
+              vb=svg.get('viewBox')
+              source_sha=svg.get('data-source-asset-sha256')
+              progress=next((n for n in svg.iter() if n.get('id')=='deck-progress'),None)
+              page=next((n for n in svg.iter() if n.get('id')=='deck-page-number'),None)
+              section=next((n for n in svg.iter() if n.get('id')=='deck-section-label'),None)
+              row={'slide':idx,'viewBox':vb,'source_sha256':source_sha,'progress':progress is not None,'page_number':page is not None,'section':section is not None}
+              rows.append(row)
+              if vb!='0 0 1600 900': failures.append(f'{p.name}: invalid viewBox {vb}')
+              if not source_sha: failures.append(f'{p.name}: missing source hash binding')
+              if progress is None or page is None or section is None: failures.append(f'{p.name}: missing deck chrome')
+          out={'status':'PASS' if not failures else 'FAIL','slides':rows,'failures':failures}
+          (root/'structural-qa.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          if failures: sys.exit(2)
+          PY
+
+      - name: Render all full slides
+        run: |
+          mkdir -p dist/run002-v3/slides/png
+          for f in dist/run002-v3/slides/svg/slide-*.svg; do
+            name=$(basename "$f" .svg)
+            rsvg-convert -w 2400 "$f" -o "dist/run002-v3/slides/png/${name}.png"
+          done
+
+      - name: Bind full-slide render hashes
+        run: |
+          python - <<'PY'
+          import hashlib, json, sys
+          from pathlib import Path
+          from PIL import Image, ImageDraw
+          root=Path('dist/run002-v3/slides')
+          def sha(p):
+              h=hashlib.sha256(); h.update(p.read_bytes()); return h.hexdigest()
+          rows=[]; failures=[]
+          pngs=sorted((root/'png').glob('slide-*.png'))
+          if len(pngs)!=15: failures.append(f'expected 15 PNGs, got {len(pngs)}')
+          for idx,p in enumerate(pngs,1):
+              with Image.open(p) as im:
+                  size=list(im.size)
+              if size!=[2400,1350]: failures.append(f'{p.name}: unexpected size {size}')
+              rows.append({'slide':idx,'png':p.relative_to(Path('dist/run002-v3')).as_posix(),'png_sha256':sha(p),'size':size})
+          out={'status':'PASS' if not failures else 'FAIL','slides':rows,'failures':failures,'assistant_visual_review':'PENDING'}
+          (root/'render-receipt.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          thumbs=[]
+          for p in pngs:
+              im=Image.open(p).convert('RGB'); im.thumbnail((480,270))
+              canvas=Image.new('RGB',(500,305),'white'); canvas.paste(im,((500-im.width)//2,5))
+              d=ImageDraw.Draw(canvas); d.text((14,282),p.stem,fill='black'); thumbs.append(canvas)
+          sheet=Image.new('RGB',(500*3,305*5),'white')
+          for i,im in enumerate(thumbs): sheet.paste(im,((i%3)*500,(i//3)*305))
+          sheet.save(root/'contact-sheet.png')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          if failures: sys.exit(2)
+          PY
+
+      - name: Upload full-slide evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run002-v3-full-slides-${{ github.run_id }}
+          path: |
+            dist/run002-v3/approved-asset-hash-qa.json
+            dist/run002-v3/slides/**/*.svg
+            dist/run002-v3/slides/**/*.png
+            dist/run002-v3/slides/*.json
+          retention-days: 3
+          if-no-files-found: warn
+
+      - name: Publish full-slide status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          receipt=Path('dist/run002-v3/slides/render-receipt.json')
+          data=json.loads(receipt.read_text(encoding='utf-8')) if receipt.exists() else None
+          out={
+            'workflow_status':os.environ.get('JOB_STATUS'),
+            'run_id':os.environ.get('GITHUB_RUN_ID'),
+            'engine_commit':os.environ.get('GITHUB_SHA'),
+            'slide_stage_status':data.get('status') if data else None,
+            'slide_count':len(data.get('slides',[])) if data else 0,
+            'artifact_name':f"run002-v3-full-slides-{os.environ.get('GITHUB_RUN_ID')}",
+            'assistant_visual_review':'PENDING'
+          }
+          Path('status').mkdir(exist_ok=True)
+          Path('status/run002-v3-full-slides.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git add status/run002-v3-full-slides.json
+          git commit -m "Record Run002 V3 full-slide pass ${GITHUB_RUN_ID}" || true
+          git pull --rebase origin run002-v3-deck
+          git push origin HEAD:run002-v3-deck
