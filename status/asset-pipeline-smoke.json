@@ -1,7 +1,7 @@
 {
   "workflow_status": "success",
-  "run_id": "32451448766",
-  "engine_commit": "75b9e9d168e71d3009104ed469921a59a03d32b2",
+  "run_id": "32451646827",
+  "engine_commit": "e541523f4bc1d7d981b46d5e9b80609f55722bf5",
   "asset_status": "PASS",
   "asset_count": 3,
   "drivers": [
@@ -12,7 +12,7 @@
   "build_status": "PASS",
   "package_status": "PASS",
   "render_status": "PASS",
-  "pptx_sha256": "02eece91cee9ae7ad5bad94d0b24712d85e36efd81cefe70299b2b383ada729a",
+  "pptx_sha256": "217f0144939f0c47f83cef2e57602180a98039e8c11cec96b3265fd91e35ff06",
   "rendered_pages": 4,
-  "artifact_name": "ppt-engine-asset-pipeline-32451448766"
+  "artifact_name": "ppt-engine-asset-pipeline-32451646827"
 }
