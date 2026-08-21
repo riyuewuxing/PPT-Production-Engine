@@ -1,0 +1,14 @@
+{
+  "workflow_status": "failure",
+  "run_id": "32450961407",
+  "engine_commit": "d5a94114756e7f91a97f8c185b41009045a7833f",
+  "asset_status": null,
+  "asset_count": null,
+  "drivers": null,
+  "build_status": null,
+  "package_status": null,
+  "render_status": null,
+  "pptx_sha256": null,
+  "rendered_pages": null,
+  "artifact_name": "ppt-engine-asset-pipeline-32450961407"
+}
