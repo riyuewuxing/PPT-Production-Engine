@@ -4,5 +4,6 @@
   "source_pptx": "dist/run002/exports/internal_energy_change_benchmark_v1.pptx",
   "output_pptx": "dist/run002/normalized/internal_energy_change_benchmark_v1.pptx",
   "qa": "dist/run002/qa/geometry-normalization.json",
-  "expected_negative_line_fixes": 1
+  "expected_negative_line_fixes": 1,
+  "visual_defect_origin": "Slide 8 legacy line used a negative vertical extent; normalize that geometry without changing the hash-pinned historical source."
 }
