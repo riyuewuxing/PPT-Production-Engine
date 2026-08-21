@@ -1,0 +1,20 @@
+{
+  "engine_version": "0.4.0",
+  "request_id": "ppt-master-native-animation-smoke-001",
+  "deck": {
+    "layout": "LAYOUT_WIDE"
+  },
+  "slides": [
+    {"type": "asset"}
+  ],
+  "output": {
+    "pptx": "dist/ppt-master-smoke/native-animation.pptx",
+    "qa_dir": "dist/ppt-master-smoke/deck-qa",
+    "render_dir": "dist/ppt-master-smoke/rendered"
+  },
+  "quality": {
+    "min_slides": 1,
+    "require_wide": true,
+    "render_dpi": 144
+  }
+}
