@@ -1,0 +1,11 @@
+{
+  "workflow_status": "success",
+  "run_id": "32473546900",
+  "engine_commit": "720cdbd4c600e3cc09d039d144559b2b1c01bd4c",
+  "static_deck_status": "PASS_STATIC_PRE_DYNAMIC",
+  "v3_pptx_sha256": "e954ea251483618c4477cbfea79d2057b629794b9803b21a407ad1736776f482",
+  "rendered_pages": 15,
+  "artifact_name": "run002-v3-static-deck-32473546900",
+  "assistant_static_slide_review": "PENDING",
+  "target_powerpoint_playback": "NOT_RUN_REQUIRED_FOR_FINAL"
+}
