@@ -1,0 +1,13 @@
+{
+  "workflow_status": "success",
+  "run_id": "32452042798",
+  "engine_commit": "99d49df6d5eef8f1ca6d440fb41d3762f3df6fab",
+  "ppt_master_commit": "228fe8b7558f6c2abeb557952b10c8caff574b26",
+  "adapter_status": "PASS",
+  "native_object_animation_slide_count": 1,
+  "pptx_sha256": "4f9649b8c2a92e4db843f7576b943ad4ab7388288cfd8e0c194bd1ccfdb74483",
+  "package_status": "PASS",
+  "render_status": "PASS",
+  "rendered_pages": 1,
+  "artifact_name": "ppt-master-smoke-32452042798"
+}
