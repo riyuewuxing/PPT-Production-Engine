@@ -65,7 +65,8 @@ jobs:
                   failures.append(f"{p.name}: XML parse {e}"); continue
               vb=svg.attrib.get('viewBox')
               if vb != '0 0 1200 560': failures.append(f"{p.name}: viewBox={vb}")
-              compact=re.sub(r'\s+','',raw)
+              semantic_text=''.join(svg.itertext())
+              compact=re.sub(r'\s+','',semantic_text)
               missing=[x for x in item.get('required_text',[]) if re.sub(r'\s+','',x) not in compact]
               if missing: failures.append(f"{p.name}: missing required text {missing}")
               rows.append({'slide':item['slide'],'id':item['id'],'svg':item['svg'],'svg_sha256':sha(p),'required_text':item.get('required_text',[]),'missing':missing})
