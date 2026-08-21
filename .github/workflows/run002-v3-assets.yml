@@ -42,6 +42,7 @@ jobs:
           rm -f handoff/run002-v3/.generate_assets.runtime.cjs
           python handoff/run002-v3/refine_failed_assets.py
           python handoff/run002-v3/refine_iteration3.py
+          python handoff/run002-v3/refine_iteration4.py
 
       - name: Semantic and structural asset QA
         run: |
