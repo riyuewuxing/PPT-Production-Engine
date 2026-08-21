@@ -1,0 +1,10 @@
+{
+  "contract_version": "1",
+  "mode": "svg-to-pptx",
+  "ppt_master_root": "vendor/ppt-master",
+  "project": "dist/run002-v3/playable-project",
+  "output": "dist/run002-v3/playable-deck/internal_energy_change_v3_playable.pptx",
+  "readback_dir": "dist/run002-v3/playable-readback",
+  "qa": "dist/run002-v3/playable-qa/ppt-master-playable-qa.json",
+  "animation_config": "animations.json"
+}
