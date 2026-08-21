@@ -43,6 +43,7 @@ jobs:
           python handoff/run002-v3/refine_failed_assets.py
           python handoff/run002-v3/refine_iteration3.py
           python handoff/run002-v3/refine_iteration4.py
+          python handoff/run002-v3/refine_iteration5.py
 
       - name: Semantic and structural asset QA
         run: |
@@ -103,7 +104,7 @@ jobs:
               rows.append({'slide':i,'png':p.relative_to(Path('dist/run002-v3')).as_posix(),'png_sha256':sha(p)})
           sem=json.loads((root/'semantic-qa.json').read_text(encoding='utf-8'))
           out={'status':'PASS' if sem.get('status')=='PASS' and len(rows)==15 else 'FAIL','semantic_qa':'assets/semantic-qa.json','render_background':'#FFF8EF','rendered_assets':rows}
-          (root/'asset-render-receipt.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          (root/'assets/asset-render-receipt.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
           thumbs=[]
           for p in pngs:
               im=Image.open(p).convert('RGB'); im.thumbnail((450,210))
