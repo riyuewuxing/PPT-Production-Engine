@@ -1,0 +1,153 @@
+name: Run002 V3 Asset Pass
+
+on:
+  push:
+    branches: [run002-v3-assets]
+    paths:
+      - handoff/run002-v3/**
+      - .github/workflows/run002-v3-assets.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  v3-assets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install SVG render dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends librsvg2-bin fonts-noto-cjk
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow
+
+      - name: Generate independent V3 assets
+        run: node handoff/run002-v3/generate_assets.js
+
+      - name: Semantic and structural asset QA
+        run: |
+          python - <<'PY'
+          import hashlib, json, re, sys
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path('dist/run002-v3')
+          manifest = json.loads((root/'assets/asset-manifest.json').read_text(encoding='utf-8'))
+          failures=[]; rows=[]
+          if len(manifest.get('assets',[])) != 15:
+              failures.append(f"expected 15 assets, got {len(manifest.get('assets',[]))}")
+          def sha(p):
+              h=hashlib.sha256(); h.update(p.read_bytes()); return h.hexdigest()
+          for item in manifest.get('assets',[]):
+              p = root/item['svg']
+              if not p.is_file():
+                  failures.append(f"missing {p}"); continue
+              raw=p.read_text(encoding='utf-8')
+              try:
+                  svg=ET.fromstring(raw)
+              except Exception as e:
+                  failures.append(f"{p.name}: XML parse {e}"); continue
+              vb=svg.attrib.get('viewBox')
+              if vb != '0 0 1200 560': failures.append(f"{p.name}: viewBox={vb}")
+              compact=re.sub(r'\s+','',raw)
+              missing=[x for x in item.get('required_text',[]) if re.sub(r'\s+','',x) not in compact]
+              if missing: failures.append(f"{p.name}: missing required text {missing}")
+              rows.append({'slide':item['slide'],'id':item['id'],'svg':item['svg'],'svg_sha256':sha(p),'required_text':item.get('required_text',[]),'missing':missing})
+          out={'status':'PASS' if not failures else 'FAIL','assets':rows,'failures':failures}
+          (root/'assets').mkdir(parents=True,exist_ok=True)
+          (root/'assets/semantic-qa.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          if failures: sys.exit(2)
+          PY
+
+      - name: Render every asset to PNG
+        run: |
+          mkdir -p dist/run002-v3/assets/png
+          for f in dist/run002-v3/assets/svg/*.svg; do
+            name=$(basename "$f" .svg)
+            rsvg-convert -w 1800 "$f" -o "dist/run002-v3/assets/png/${name}.png"
+          done
+
+      - name: Build hash-bound asset receipt and contact sheet
+        run: |
+          python - <<'PY'
+          import hashlib, json, math
+          from pathlib import Path
+          from PIL import Image, ImageOps, ImageDraw
+          root=Path('dist/run002-v3/assets')
+          def sha(p):
+              h=hashlib.sha256(); h.update(p.read_bytes()); return h.hexdigest()
+          rows=[]
+          pngs=sorted((root/'png').glob('*.png'))
+          for i,p in enumerate(pngs,1):
+              rows.append({'slide':i,'png':p.relative_to(Path('dist/run002-v3')).as_posix(),'png_sha256':sha(p)})
+          sem=json.loads((root/'semantic-qa.json').read_text(encoding='utf-8'))
+          out={'status':'PASS' if sem.get('status')=='PASS' and len(rows)==15 else 'FAIL','semantic_qa':'assets/semantic-qa.json','rendered_assets':rows}
+          (root/'asset-render-receipt.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          # contact sheet is convenience only, never final asset review evidence
+          thumbs=[]
+          for p in pngs:
+              im=Image.open(p).convert('RGB'); im.thumbnail((450,210));
+              canvas=Image.new('RGB',(470,245),'white'); canvas.paste(im,((470-im.width)//2,10));
+              d=ImageDraw.Draw(canvas); d.text((15,220),p.stem,fill='black'); thumbs.append(canvas)
+          sheet=Image.new('RGB',(470*3,245*5),'white')
+          for idx,im in enumerate(thumbs): sheet.paste(im,((idx%3)*470,(idx//3)*245))
+          sheet.save(root/'contact-sheet.png')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          if out['status']!='PASS': raise SystemExit(2)
+          PY
+
+      - name: Upload V3 asset evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run002-v3-assets-${{ github.run_id }}
+          path: |
+            dist/run002-v3/assets/**/*.svg
+            dist/run002-v3/assets/**/*.png
+            dist/run002-v3/assets/*.json
+          retention-days: 3
+          if-no-files-found: warn
+
+      - name: Publish V3 asset status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          receipt=Path('dist/run002-v3/assets/asset-render-receipt.json')
+          data=json.loads(receipt.read_text(encoding='utf-8')) if receipt.exists() else None
+          out={
+            'workflow_status': os.environ.get('JOB_STATUS'),
+            'run_id': os.environ.get('GITHUB_RUN_ID'),
+            'engine_commit': os.environ.get('GITHUB_SHA'),
+            'asset_stage_status': data.get('status') if data else None,
+            'asset_count': len(data.get('rendered_assets',[])) if data else 0,
+            'artifact_name': f"run002-v3-assets-{os.environ.get('GITHUB_RUN_ID')}",
+            'assistant_visual_review': 'PENDING'
+          }
+          Path('status').mkdir(exist_ok=True)
+          Path('status/run002-v3-assets.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git add status/run002-v3-assets.json
+          git commit -m "Record Run002 V3 asset pass ${GITHUB_RUN_ID}" || true
+          git pull --rebase origin run002-v3-assets
+          git push origin HEAD:run002-v3-assets
