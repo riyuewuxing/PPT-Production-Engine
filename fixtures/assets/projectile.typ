@@ -2,9 +2,10 @@
 #import "@preview/cetz:0.5.2": canvas, draw
 #import "../../engine/presets/presentation_science.typ": *
 
-#set page(width: 16cm, height: 9cm, margin: .6cm)
+// Tight asset canvas: the PPT builder preserves aspect ratio when placing the preview.
+#set page(width: auto, height: auto, margin: .35cm)
 
-#canvas({
+#canvas(length: 1.35cm, {
   p-axis((-.8, 0), (9.2, 0))
   p-axis((0, -3.3), (0, 0.8))
   p-curve((0, 0), (1.6, -.112), (0.533333, 0), (1.066667, -.037333))
