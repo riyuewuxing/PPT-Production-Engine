@@ -1,0 +1,166 @@
+name: Run002 V3 Static Asset Deck
+
+on:
+  push:
+    branches: [run002-v3-assets]
+    paths:
+      - handoff/run002-v3/**
+      - engine/build_asset_deck.mjs
+      - engine/semantic_svg_lint.py
+      - engine/qa_package.py
+      - engine/render_pptx.py
+      - .github/workflows/run002-v3-static-deck.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  static-deck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends librsvg2-bin libreoffice poppler-utils fonts-noto-cjk
+          npm install --ignore-scripts --no-audit --no-fund
+          python -m pip install --disable-pip-version-check --no-cache-dir Pillow
+
+      - name: Generate approved V3 assets
+        run: |
+          cp handoff/run002-v3/generate_assets.js handoff/run002-v3/.generate_assets.runtime.cjs
+          node handoff/run002-v3/.generate_assets.runtime.cjs
+          rm -f handoff/run002-v3/.generate_assets.runtime.cjs
+          python handoff/run002-v3/refine_failed_assets.py
+          python handoff/run002-v3/refine_iteration3.py
+          python handoff/run002-v3/refine_iteration4.py
+          python handoff/run002-v3/refine_iteration5.py
+          python handoff/run002-v3/refine_iteration6.py
+          python handoff/run002-v3/refine_iteration7.py
+          python engine/semantic_svg_lint.py \
+            dist/run002-v3/assets/svg/01-s01-hero-two-channels.svg \
+            dist/run002-v3/assets/svg/02-s02-work-vs-heat.svg \
+            dist/run002-v3/assets/svg/05-s05-compression-work.svg \
+            dist/run002-v3/assets/svg/11-s11-state-vs-process.svg \
+            --json-out dist/run002-v3/assets/semantic-geometry-qa.json
+          mkdir -p dist/run002-v3/assets/png
+          for f in dist/run002-v3/assets/svg/*.svg; do
+            name=$(basename "$f" .svg)
+            rsvg-convert -w 1800 "$f" -o "dist/run002-v3/assets/png/${name}.png"
+          done
+
+      - name: Assert exact asset gate receipt exists in branch status
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          p = Path('status/run002-v3-asset-visual-review.json')
+          if not p.exists():
+              raise SystemExit('missing asset visual review receipt')
+          data = json.loads(p.read_text(encoding='utf-8'))
+          if data.get('status') != 'PASS_ASSET_GATE_ONLY' or data.get('hard_fail_count') != 0 or data.get('asset_count') != 15:
+              raise SystemExit(f"asset gate is not approved: {data.get('status')}")
+          print('asset visual gate receipt PASS')
+          PY
+
+      - name: Build V3 static asset deck
+        run: node engine/build_asset_deck.mjs --manifest handoff/run002-v3/deck-manifest.json
+
+      - name: Exact package QA
+        run: python engine/qa_package.py --manifest handoff/run002-v3/deck-manifest.json
+
+      - name: LibreOffice static render
+        run: python engine/render_pptx.py --manifest handoff/run002-v3/deck-manifest.json
+
+      - name: Bind static deck receipt
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          def load(p): return json.loads(Path(p).read_text(encoding='utf-8'))
+          build = load('dist/run002-v3/deck-qa/asset-deck-build-result.json')
+          package = load('dist/run002-v3/deck-qa/package-qa.json')
+          render = load('dist/run002-v3/deck-qa/render-qa.json')
+          asset_gate = load('status/run002-v3-asset-visual-review.json')
+          hashes = [build.get('pptx_sha256'), package.get('pptx_sha256'), render.get('pptx_sha256')]
+          same = len(set(hashes)) == 1 and all(hashes)
+          checks = {
+            'asset_gate_pass': asset_gate.get('status') == 'PASS_ASSET_GATE_ONLY',
+            'build_pass': build.get('status') == 'PASS',
+            'package_pass': package.get('status') == 'PASS' and package.get('slide_count') == 15,
+            'render_pass': render.get('status') == 'PASS' and len(render.get('pages', [])) == 15,
+            'same_generation': same,
+          }
+          out = {
+            'status': 'PASS_STATIC_PRE_DYNAMIC' if all(checks.values()) else 'FAIL',
+            'stage': 'STATIC_ASSET_DECK_PRE_DYNAMIC',
+            'v3_pptx_sha256': hashes[0] if same else None,
+            'rendered_pages': len(render.get('pages', [])),
+            'checks': checks,
+            'target_powerpoint_playback': 'NOT_RUN_REQUIRED_FOR_FINAL',
+            'animation_state_review': 'NOT_RUN_REQUIRED_FOR_FINAL'
+          }
+          Path('dist/run002-v3/deck-qa/static-deck-receipt.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(out, ensure_ascii=False, indent=2))
+          if out['status'] == 'FAIL': sys.exit(2)
+          PY
+
+      - name: Upload V3 static deck evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run002-v3-static-deck-${{ github.run_id }}
+          path: |
+            dist/run002-v3/deck/*.pptx
+            dist/run002-v3/deck-qa/*.json
+            dist/run002-v3/deck-rendered/*.pdf
+            dist/run002-v3/deck-rendered/*.png
+            dist/run002-v3/assets/png/*.png
+          retention-days: 3
+          if-no-files-found: warn
+
+      - name: Publish V3 static deck status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          receipt=Path('dist/run002-v3/deck-qa/static-deck-receipt.json')
+          data=json.loads(receipt.read_text(encoding='utf-8')) if receipt.exists() else None
+          out={
+            'workflow_status': os.environ.get('JOB_STATUS'),
+            'run_id': os.environ.get('GITHUB_RUN_ID'),
+            'engine_commit': os.environ.get('GITHUB_SHA'),
+            'static_deck_status': data.get('status') if data else None,
+            'v3_pptx_sha256': data.get('v3_pptx_sha256') if data else None,
+            'rendered_pages': data.get('rendered_pages') if data else None,
+            'artifact_name': f"run002-v3-static-deck-{os.environ.get('GITHUB_RUN_ID')}",
+            'assistant_static_slide_review': 'PENDING',
+            'target_powerpoint_playback': 'NOT_RUN_REQUIRED_FOR_FINAL'
+          }
+          Path('status').mkdir(exist_ok=True)
+          Path('status/run002-v3-static-deck.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git add status/run002-v3-static-deck.json
+          git commit -m "Record Run002 V3 static deck ${GITHUB_RUN_ID}" || true
+          git pull --rebase origin run002-v3-assets
+          git push origin HEAD:run002-v3-assets
