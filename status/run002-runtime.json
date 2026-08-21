@@ -1,19 +1,22 @@
 {
-  "workflow_status": "failure",
-  "run_id": "32459371885",
-  "engine_commit": "760cef41c7c27657795e47b5acdffb97311d68ed",
+  "workflow_status": "success",
+  "run_id": "32459521697",
+  "engine_commit": "8f0a54fae4c9a9fa8c40b317233df5ceabf848e7",
   "branch": "run002-engine-runtime",
   "historical_source_git_blob_sha": "fc894e245543f8dfe731d06f31ff293e0d46c165",
   "reviewed_v1_sha256": "fffc24a5286d14a8ac5c4364e86d07a50a4ee43b6d1b006abd62bcb4fdd5b94c",
-  "rebuilt_v1_sha256": "6f602a506a41a505183758b837c5293b72934938c894046e59f1c49c3e7902df",
+  "rebuilt_v1_sha256": "7a191c90fa9a84b5767b1a1e3262b042e90442c033958e1cb470d74a6b700b5f",
   "v1_review_inheritance_eligible": false,
-  "migration_status": "FAIL",
-  "native_object_animation_slides": [],
+  "migration_status": "PASS",
+  "native_object_animation_slides": [
+    7,
+    15
+  ],
   "semantic_readback_pass": true,
-  "package_status": null,
-  "render_status": null,
-  "rendered_pages": null,
-  "v2_pptx_sha256": "d6644d6b2cbeb7267ecedb5735b7dcb46516221412cb6284f4586eb10faf1dcd",
-  "runtime_receipt_status": null,
-  "artifact_name": "run002-native-migration-32459371885"
+  "package_status": "PASS",
+  "render_status": "PASS",
+  "rendered_pages": 15,
+  "v2_pptx_sha256": "1746cb320762973ba05038f7da490b08457d9fc9a5a2da2050ebaa4049ac777f",
+  "runtime_receipt_status": "PASS",
+  "artifact_name": "run002-native-migration-32459521697"
 }
