@@ -1,11 +1,11 @@
 {
   "workflow_status": "success",
-  "run_id": "32398244850",
-  "engine_commit": "bc7d980746d959bbe0bda7d2a0c5494a73d1716b",
+  "run_id": "32451312953",
+  "engine_commit": "19cfcbade54086140eb6d184f93089b0c53dc01b",
   "build_status": "PASS",
   "package_status": "PASS",
   "render_status": "PASS",
-  "pptx_sha256": "8e82408c28e03bd5432dc76e0553ad72269f5c72fefaa862631d09e3aba680d9",
+  "pptx_sha256": "d24633693a16e44c50457d2faffec250ff1a7f2bba870071bb49346c4d608ca6",
   "rendered_pages": 6,
-  "updated_at": "2026-08-20T17:34:07.551007+00:00"
+  "updated_at": "2026-08-21T05:39:28.195623+00:00"
 }
