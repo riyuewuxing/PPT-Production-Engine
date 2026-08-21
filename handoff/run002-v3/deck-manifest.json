@@ -19,7 +19,8 @@
     "render_dpi": 144,
     "stage": "STATIC_ASSET_DECK_PRE_DYNAMIC",
     "requires_asset_visual_review_pass": true,
-    "target_player_playback_required_for_final": true
+    "target_player_playback_required_for_final": true,
+    "trigger_note": "second push after workflow creation so GitHub evaluates the static-deck workflow on this branch"
   },
   "slides": [
     {"type":"full_asset","phase":"问题引入","image":"dist/run002-v3/assets/png/01-s01-hero-two-channels.png"},
