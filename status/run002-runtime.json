@@ -1,0 +1,19 @@
+{
+  "workflow_status": "failure",
+  "run_id": "32459164459",
+  "engine_commit": "e70bfef3cc9f80d6eae5b12dff86543508fc1a1a",
+  "branch": "run002-engine-runtime",
+  "historical_source_git_blob_sha": "fc894e245543f8dfe731d06f31ff293e0d46c165",
+  "reviewed_v1_sha256": "fffc24a5286d14a8ac5c4364e86d07a50a4ee43b6d1b006abd62bcb4fdd5b94c",
+  "rebuilt_v1_sha256": null,
+  "v1_review_inheritance_eligible": null,
+  "migration_status": null,
+  "native_object_animation_slides": null,
+  "semantic_readback_pass": null,
+  "package_status": null,
+  "render_status": null,
+  "rendered_pages": null,
+  "v2_pptx_sha256": null,
+  "runtime_receipt_status": null,
+  "artifact_name": "run002-native-migration-32459164459"
+}
