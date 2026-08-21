@@ -6,5 +6,8 @@
   "output": "dist/run002-v3/playable-deck/internal_energy_change_v3_playable.pptx",
   "readback_dir": "dist/run002-v3/playable-readback",
   "qa": "dist/run002-v3/playable-qa/ppt-master-playable-qa.json",
-  "animation_config": "animations.json"
+  "animation_config": "animations.json",
+  "animation_state_dir": "dist/run002-v3/playable-animation-states",
+  "animation_state_qa": "dist/run002-v3/playable-qa/animation-state-qa.json",
+  "animation_state_render_width": 1600
 }
