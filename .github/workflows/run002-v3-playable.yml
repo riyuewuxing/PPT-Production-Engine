@@ -1,0 +1,186 @@
+name: Run002 V3 Playable Deck
+
+on:
+  push:
+    branches: [run002-v3-assets]
+    paths:
+      - handoff/run002-v3/**
+      - engine/ppt_master_adapter.py
+      - engine/qa_package.py
+      - engine/render_pptx.py
+      - .github/workflows/run002-v3-playable.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  v3-playable:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout Engine branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Checkout pinned PPT Master
+        uses: actions/checkout@v4
+        with:
+          repository: hugohe3/ppt-master
+          ref: 228fe8b7558f6c2abeb557952b10c8caff574b26
+          path: vendor/ppt-master
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cheap playable contract preflight
+        run: |
+          python -m py_compile \
+            handoff/run002-v3/refine_failed_assets.py \
+            handoff/run002-v3/refine_iteration3.py \
+            handoff/run002-v3/refine_iteration4.py \
+            handoff/run002-v3/refine_iteration5.py \
+            handoff/run002-v3/refine_iteration6.py \
+            handoff/run002-v3/refine_iteration7.py \
+            handoff/run002-v3/prepare_playable_project.py
+          node --check handoff/run002-v3/generate_assets.js
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          m = json.loads(Path('handoff/run002-v3/playable-render-manifest.json').read_text(encoding='utf-8'))
+          if m['quality'].get('required_animation_slides') != [7, 13, 15]:
+              sys.exit('playable render manifest must require animation slides [7, 13, 15]')
+          print('cheap playable contract preflight PASS')
+          PY
+
+      - name: Install runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice poppler-utils fonts-noto-cjk librsvg2-bin
+          npm install --ignore-scripts --no-audit --no-fund
+          python -m pip install --disable-pip-version-check --no-cache-dir \
+            python-pptx XlsxWriter skia-pathops uharfbuzz Pillow numpy
+
+      - name: Generate reviewed V3 assets and playable SVG project
+        run: |
+          cp handoff/run002-v3/generate_assets.js handoff/run002-v3/.generate_assets.runtime.cjs
+          node handoff/run002-v3/.generate_assets.runtime.cjs
+          rm -f handoff/run002-v3/.generate_assets.runtime.cjs
+          python handoff/run002-v3/refine_failed_assets.py
+          python handoff/run002-v3/refine_iteration3.py
+          python handoff/run002-v3/refine_iteration4.py
+          python handoff/run002-v3/refine_iteration5.py
+          python handoff/run002-v3/refine_iteration6.py
+          python handoff/run002-v3/refine_iteration7.py
+          python handoff/run002-v3/prepare_playable_project.py
+
+      - name: Build native playable PPTX with PPT Master
+        run: python engine/ppt_master_adapter.py --manifest handoff/run002-v3/ppt-master-playable-manifest.json
+
+      - name: Exact playable package QA
+        run: python engine/qa_package.py --manifest handoff/run002-v3/playable-render-manifest.json
+
+      - name: Render playable candidate with LibreOffice
+        run: python engine/render_pptx.py --manifest handoff/run002-v3/playable-render-manifest.json
+
+      - name: Bind playable receipt
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          def load(p): return json.loads(Path(p).read_text(encoding='utf-8'))
+          prep = load('dist/run002-v3/playable-qa/playable-project-prep.json')
+          master = load('dist/run002-v3/playable-qa/ppt-master-playable-qa.json')
+          package = load('dist/run002-v3/playable-qa/package-qa.json')
+          render = load('dist/run002-v3/playable-qa/render-qa.json')
+          required = [7, 13, 15]
+          actual_raw = master.get('native_object_animation_slides') or []
+          actual = []
+          for item in actual_raw:
+              if isinstance(item, int): actual.append(item)
+              elif isinstance(item, dict):
+                  for key in ('index', 'slide', 'slide_index'):
+                      if isinstance(item.get(key), int): actual.append(item[key]); break
+          actual = sorted(set(actual))
+          hashes = [master.get('pptx_sha256'), package.get('pptx_sha256'), render.get('pptx_sha256')]
+          same_generation = len(set(hashes)) == 1 and all(hashes)
+          checks = {
+              'prep_pass': prep.get('status') == 'PASS' and prep.get('svg_count') == 15,
+              'ppt_master_pass': master.get('status') == 'PASS',
+              'required_animation_slides_present': set(required).issubset(set(actual)),
+              'package_pass': package.get('status') == 'PASS',
+              'render_pass': render.get('status') == 'PASS' and len(render.get('pages', [])) == 15,
+              'same_generation': same_generation,
+          }
+          ok = all(checks.values())
+          out = {
+              'status': 'PASS_PLAYABLE_PRE_TARGET_PLAYER' if ok else 'FAIL',
+              'v3_playable_pptx_sha256': hashes[0] if same_generation else None,
+              'required_animation_slides': required,
+              'actual_animation_slides': actual,
+              'rendered_pages': len(render.get('pages', [])),
+              'checks': checks,
+              'target_powerpoint_playback': 'NOT_RUN_REQUIRED_FOR_FINAL',
+              'scope': 'Native animation package/render gate only; final acceptance still requires PowerPoint Desktop state-by-state playback.',
+          }
+          Path('dist/run002-v3/playable-qa/playable-receipt.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(out, ensure_ascii=False, indent=2))
+          if not ok: sys.exit(1)
+          PY
+
+      - name: Upload playable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run002-v3-playable-${{ github.run_id }}
+          path: |
+            dist/run002-v3/playable-deck/*.pptx
+            dist/run002-v3/playable-qa/*.json
+            dist/run002-v3/playable-rendered/*.pdf
+            dist/run002-v3/playable-rendered/*.png
+            dist/run002-v3/playable-project/animations.json
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Publish playable status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          def load(p):
+              q = Path(p)
+              return json.loads(q.read_text(encoding='utf-8')) if q.exists() else None
+          receipt = load('dist/run002-v3/playable-qa/playable-receipt.json') or {}
+          render = load('dist/run002-v3/playable-qa/render-qa.json') or {}
+          out = {
+              'workflow_status': os.environ.get('JOB_STATUS'),
+              'run_id': os.environ.get('GITHUB_RUN_ID'),
+              'engine_commit': os.environ.get('GITHUB_SHA'),
+              'playable_status': receipt.get('status'),
+              'v3_playable_pptx_sha256': receipt.get('v3_playable_pptx_sha256'),
+              'actual_animation_slides': receipt.get('actual_animation_slides'),
+              'rendered_pages': receipt.get('rendered_pages'),
+              'target_powerpoint_playback': 'NOT_RUN_REQUIRED_FOR_FINAL',
+              'artifact_name': f"run002-v3-playable-{os.environ.get('GITHUB_RUN_ID')}",
+          }
+          Path('status').mkdir(exist_ok=True)
+          Path('status/run002-v3-playable.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(out, ensure_ascii=False, indent=2))
+          PY
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git add status/run002-v3-playable.json
+          git commit -m "Record Run002 V3 playable ${GITHUB_RUN_ID}" || true
+          git pull --rebase origin run002-v3-assets
+          git push origin HEAD:run002-v3-assets
