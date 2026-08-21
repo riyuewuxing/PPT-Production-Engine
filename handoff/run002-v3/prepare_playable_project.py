@@ -3,9 +3,13 @@
 
 This script deliberately runs after the independent asset gate. It reuses the
 15 reviewed SVG assets, adds only the missing dynamic-state groups needed for
-slides 7/13/15, and writes a PPT Master animations.json file. It does not claim
-final acceptance; it prepares a playable PPTX candidate for state-by-state and
-target PowerPoint review.
+slides 7/13/15, and writes a PPT Master animations.json file.
+
+Important: asset SVGs are optimized first for high-quality deterministic PNG
+review. Before sending them to PPT Master for native DrawingML generation, this
+script also applies a bounded SVG compatibility normalization so strict target
+conversion does not rediscover the same unsupported SVG syntax in every future
+project.
 """
 from __future__ import annotations
 
@@ -21,16 +25,11 @@ OUT = PROJECT / "svg_output"
 ANIM = PROJECT / "animations.json"
 QA = ROOT / "dist/run002-v3/playable-qa/playable-project-prep.json"
 
+PPT_SAFE_FONT = "Microsoft YaHei"
+
 
 def die(message: str) -> None:
     raise SystemExit(message)
-
-
-def read(name: str) -> str:
-    p = SRC / name
-    if not p.is_file():
-        die(f"missing reviewed asset svg: {p}")
-    return p.read_text(encoding="utf-8")
 
 
 def write(name: str, content: str) -> None:
@@ -51,6 +50,61 @@ def group_wrap(text: str, group_id: str, inner_pattern: str, label: str) -> str:
     return text[:m.start()] + f'<g id="{group_id}">' + m.group(0) + '</g>' + text[m.end():]
 
 
+def normalize_for_ppt_master(text: str, *, label: str) -> tuple[str, dict[str, int]]:
+    """Make reviewed SVG syntax compatible with strict PPT Master export.
+
+    This is not a visual-quality approval. It is a bounded syntax/compatibility
+    bridge from reviewed SVG/PNG assets to native PowerPoint DrawingML.
+    """
+    counts: dict[str, int] = {}
+
+    def sub(pattern: str, repl: str, key: str, value: str) -> str:
+        new, n = re.subn(pattern, repl, value)
+        counts[key] = counts.get(key, 0) + n
+        return new
+
+    # PPT Master currently treats dominant-baseline on <text> as unsupported.
+    # Assets use explicit x/y coordinates; final positioning is rechecked after
+    # playable render, so removing this is safer than weakening converter gates.
+    text = sub(r'\s+dominant-baseline="[^"]*"', '', 'removed_dominant_baseline', text)
+
+    # Normalize CSS-ish intermediate weights to explicit PPT-safe integer steps.
+    text = sub(r'font-weight="650"', 'font-weight="700"', 'font_weight_650_to_700', text)
+    text = sub(r'font-weight="750"', 'font-weight="700"', 'font_weight_750_to_700', text)
+
+    # Use a PPT-safe Chinese font for native DrawingML output. The source assets
+    # remain unchanged; this is the target-player conversion copy.
+    text = sub(
+        r'font-family="Noto Sans CJK SC, Noto Sans, sans-serif"',
+        f'font-family="{PPT_SAFE_FONT}"',
+        'font_stack_to_ppt_safe',
+        text,
+    )
+    text = sub(
+        r"font-family='Noto Sans CJK SC, Noto Sans, sans-serif'",
+        f'font-family="{PPT_SAFE_FONT}"',
+        'font_stack_to_ppt_safe',
+        text,
+    )
+
+    # Make paint recommendations deterministic; this was advisory but cheap.
+    text = text.replace('#22354f', '#22354F')
+    counts['uppercase_shadow_color'] = counts.get('uppercase_shadow_color', 0)
+
+    if 'data-pptx-page-role=' not in text:
+        text = text.replace('<svg ', '<svg data-pptx-page-role="slide" ', 1)
+        counts['added_root_page_role'] = 1
+    else:
+        counts['added_root_page_role'] = 0
+
+    # Fail fast if known blocking unsupported syntax remains.
+    if 'dominant-baseline=' in text:
+        die(f"{label}: dominant-baseline remained after normalization")
+    if 'font-weight="650"' in text or 'font-weight="750"' in text:
+        die(f"{label}: unsupported intermediate font weight remained after normalization")
+    return text, counts
+
+
 def slide07(text: str) -> str:
     ensure(text, 'id="work-path"', 'slide07')
     ensure(text, 'id="heat-path"', 'slide07')
@@ -68,18 +122,18 @@ def slide13(text: str) -> str:
     # The original asset intentionally contains A-D rails and answer boxes only.
     if 'id="statement-A"' in text:
         return text
-    statements = '''
+    statements = f'''
 <g id="question-statements">
-  <g id="statement-A"><text x="170" y="130" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="700" fill="#203047" dominant-baseline="middle">只要物体温度升高，就一定吸收了热量。</text></g>
-  <g id="statement-B"><text x="170" y="225" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="700" fill="#203047" dominant-baseline="middle">外界对气体做功，气体内能可能增加。</text></g>
-  <g id="statement-C"><text x="170" y="320" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="700" fill="#203047" dominant-baseline="middle">热量是物体内部本来含有的一种物质。</text></g>
-  <g id="statement-D"><text x="170" y="415" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="25" font-weight="700" fill="#203047" dominant-baseline="middle">摩擦生热说明机械能可以转化为内能。</text></g>
+  <g id="statement-A"><text x="170" y="130" font-family="{PPT_SAFE_FONT}" font-size="25" font-weight="700" fill="#203047">只要物体温度升高，就一定吸收了热量。</text></g>
+  <g id="statement-B"><text x="170" y="225" font-family="{PPT_SAFE_FONT}" font-size="25" font-weight="700" fill="#203047">外界对气体做功，气体内能可能增加。</text></g>
+  <g id="statement-C"><text x="170" y="320" font-family="{PPT_SAFE_FONT}" font-size="25" font-weight="700" fill="#203047">热量是物体内部本来含有的一种物质。</text></g>
+  <g id="statement-D"><text x="170" y="415" font-family="{PPT_SAFE_FONT}" font-size="25" font-weight="700" fill="#203047">摩擦生热说明机械能可以转化为内能。</text></g>
 </g>
 <g id="answer-reveal">
-  <text x="1119" y="131" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="900" fill="#D64545" text-anchor="middle" dominant-baseline="middle">错</text>
-  <text x="1119" y="226" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="900" fill="#15803D" text-anchor="middle" dominant-baseline="middle">对</text>
-  <text x="1119" y="321" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="900" fill="#D64545" text-anchor="middle" dominant-baseline="middle">错</text>
-  <text x="1119" y="416" font-family="Noto Sans CJK SC, Noto Sans, sans-serif" font-size="24" font-weight="900" fill="#15803D" text-anchor="middle" dominant-baseline="middle">对</text>
+  <text x="1119" y="131" font-family="{PPT_SAFE_FONT}" font-size="24" font-weight="900" fill="#D64545" text-anchor="middle">错</text>
+  <text x="1119" y="226" font-family="{PPT_SAFE_FONT}" font-size="24" font-weight="900" fill="#15803D" text-anchor="middle">对</text>
+  <text x="1119" y="321" font-family="{PPT_SAFE_FONT}" font-size="24" font-weight="900" fill="#D64545" text-anchor="middle">错</text>
+  <text x="1119" y="416" font-family="{PPT_SAFE_FONT}" font-size="24" font-weight="900" fill="#15803D" text-anchor="middle">对</text>
 </g>
 '''
     text = text.replace('</svg>', statements + '</svg>')
@@ -120,6 +174,7 @@ def main() -> int:
     QA.parent.mkdir(parents=True, exist_ok=True)
 
     rows = []
+    normalization_totals: dict[str, int] = {}
     for src in sorted(SRC.glob("*.svg")):
         text = src.read_text(encoding="utf-8")
         if src.name.startswith("07-"):
@@ -128,8 +183,11 @@ def main() -> int:
             text = slide13(text)
         elif src.name.startswith("15-"):
             text = slide15(text)
+        text, counts = normalize_for_ppt_master(text, label=src.name)
+        for key, value in counts.items():
+            normalization_totals[key] = normalization_totals.get(key, 0) + value
         write(src.name, text)
-        rows.append({"source": src.relative_to(ROOT).as_posix(), "output": (OUT/src.name).relative_to(ROOT).as_posix()})
+        rows.append({"source": src.relative_to(ROOT).as_posix(), "output": (OUT/src.name).relative_to(ROOT).as_posix(), "normalization": counts})
 
     animations = {
         "version": 1,
@@ -167,8 +225,9 @@ def main() -> int:
         "animated_slides": [7, 13, 15],
         "minimum_clicks": {"7": 3, "13": 2, "15": 5},
         "animations": ANIM.relative_to(ROOT).as_posix(),
+        "normalization_totals": normalization_totals,
         "rows": rows,
-        "scope": "Prepares native SVG project for playable PPTX candidate; does not approve target-player playback."
+        "scope": "Prepares native SVG project for playable PPTX candidate; does not approve target-player playback or reuse PNG asset visual review for the converted playable output."
     }
     QA.write_text(json.dumps(evidence, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(evidence, ensure_ascii=False, indent=2))
