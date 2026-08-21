@@ -1,0 +1,53 @@
+{
+  "engine_contract": "0.4.0",
+  "capabilities": [
+    {
+      "id": "pptxgenjs-deck",
+      "kind": "deck",
+      "status": "verified",
+      "outputs": ["pptx"],
+      "executor": "node engine/build_pptx.mjs"
+    },
+    {
+      "id": "typst-cetz",
+      "kind": "scientific-diagram",
+      "status": "migration-smoke",
+      "inputs": ["typst-source"],
+      "outputs": ["svg", "png-preview"],
+      "executor": "python engine/render_asset.py"
+    },
+    {
+      "id": "graphviz",
+      "kind": "diagram",
+      "status": "migration-smoke",
+      "inputs": ["dot-source"],
+      "outputs": ["svg", "png-preview"],
+      "executor": "python engine/render_asset.py"
+    },
+    {
+      "id": "matplotlib",
+      "kind": "chart",
+      "status": "migration-smoke",
+      "inputs": ["declarative-json"],
+      "outputs": ["svg", "png-preview"],
+      "executor": "python engine/render_asset.py"
+    },
+    {
+      "id": "libreoffice-render",
+      "kind": "deck-render",
+      "status": "verified",
+      "outputs": ["pdf", "png-pages"],
+      "executor": "python engine/render_pptx.py"
+    }
+  ],
+  "deferred": [
+    {
+      "id": "manim",
+      "reason": "Requires a constrained declarative adapter before the engine may safely execute caller-defined scenes."
+    },
+    {
+      "id": "ppt-master",
+      "reason": "Heavy PPT transformation/animation adapter will be migrated after the asset contract is stable."
+    }
+  ]
+}

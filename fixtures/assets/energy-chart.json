@@ -1,0 +1,11 @@
+{
+  "kind": "line",
+  "title": "Energy transfer pathways",
+  "xlabel": "Process step",
+  "ylabel": "Relative energy",
+  "x": [0, 1, 2, 3, 4, 5],
+  "series": [
+    {"label": "Work pathway", "y": [0.2, 0.32, 0.5, 0.68, 0.82, 1.0], "marker": "o", "linewidth": 2.4},
+    {"label": "Heat pathway", "y": [0.15, 0.26, 0.44, 0.63, 0.84, 1.02], "marker": "s", "linewidth": 2.4}
+  ]
+}

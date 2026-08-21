@@ -46,7 +46,7 @@ function addTitleSlide(pptx, spec) {
   slide.addText(spec.title, { x: 0.65, y: 1.35, w: 11.0, h: 0.75, fontFace: "Aptos Display", fontSize: 38, bold: true, color: "102033", margin: 0.02 });
   slide.addText(spec.subtitle, { x: 0.7, y: 2.25, w: 10.5, h: 0.5, fontFace: "Aptos", fontSize: 20, color: "465A69", margin: 0.02 });
   slide.addShape(pptx.ShapeType.rect, { x: 0.7, y: 3.35, w: 5.0, h: 0.08, fill: { color: "2B6CB0" }, line: { color: "2B6CB0" } });
-  slide.addText("fixture smoke deck", { x: 0.7, y: 5.9, w: 3.2, h: 0.28, fontSize: 12, color: "7A8793", margin: 0.02 });
+  slide.addText("PPT Production Engine", { x: 0.7, y: 5.9, w: 3.2, h: 0.28, fontSize: 12, color: "7A8793", margin: 0.02 });
 }
 
 function addSectionSlide(pptx, spec) {
@@ -56,7 +56,7 @@ function addSectionSlide(pptx, spec) {
   slide.addText(spec.title, { x: 0.7, y: 1.25, w: 10.7, h: 0.65, fontSize: 32, bold: true, color: "17212B", margin: 0.02 });
   slide.addText(spec.body, { x: 0.75, y: 2.35, w: 9.6, h: 1.1, fontSize: 21, color: "3A4A57", breakLine: false, fit: "shrink", margin: 0.05 });
   slide.addShape(pptx.ShapeType.roundRect, { x: 0.75, y: 4.25, w: 4.4, h: 0.7, rectRadius: 0.08, fill: { color: "EAF3FF" }, line: { color: "C6DDF7" } });
-  slide.addText("public fixture only", { x: 1.05, y: 4.48, w: 3.7, h: 0.25, fontSize: 15, bold: true, color: "2B5A88", margin: 0.02 });
+  slide.addText("deterministic production", { x: 1.05, y: 4.48, w: 3.7, h: 0.25, fontSize: 15, bold: true, color: "2B5A88", margin: 0.02 });
 }
 
 function addBulletsSlide(pptx, spec) {
@@ -113,6 +113,19 @@ function addChecklistSlide(pptx, spec) {
   }
 }
 
+function addAssetSlide(pptx, spec) {
+  const slide = pptx.addSlide();
+  slide.background = { color: "FFFFFF" };
+  slide.addText(spec.title, { x: 0.7, y: 0.55, w: 11.4, h: 0.55, fontSize: 27, bold: true, color: "17212B", margin: 0.02 });
+  const imagePath = resolveInsideRoot(spec.image, "asset-slide.image");
+  if (!fs.existsSync(imagePath)) throw new Error(`asset-slide.image does not exist: ${spec.image}`);
+  slide.addShape(pptx.ShapeType.roundRect, { x: 0.72, y: 1.25, w: 11.85, h: 4.95, rectRadius: 0.05, fill: { color: "F8FAFC" }, line: { color: "D9E2EC", width: 1 } });
+  slide.addImage({ path: imagePath, x: 0.95, y: 1.48, w: 11.4, h: 4.5 });
+  if (spec.caption) {
+    slide.addText(spec.caption, { x: 0.95, y: 6.35, w: 11.35, h: 0.45, fontSize: 11.5, color: "64748B", margin: 0.02, fit: "shrink" });
+  }
+}
+
 async function main() {
   const args = parseArgs();
   const manifestPath = resolveInsideRoot(args.manifest, "manifest");
@@ -126,7 +139,7 @@ async function main() {
   pptx.layout = manifest.deck.layout || "LAYOUT_WIDE";
   pptx.author = manifest.deck.author || "PPT Production Engine";
   pptx.company = manifest.deck.company || "riyuewuxing";
-  pptx.subject = manifest.deck.subject || "PPT Production Engine fixture";
+  pptx.subject = manifest.deck.subject || "PPT Production Engine";
   pptx.title = manifest.deck.title || "PPT Production Engine";
   pptx.lang = manifest.deck.language || "en-US";
   pptx.theme = manifest.deck.theme || { headFontFace: "Aptos Display", bodyFontFace: "Aptos", lang: "en-US" };
@@ -138,6 +151,7 @@ async function main() {
     else if (slideSpec.type === "two_column") addTwoColumnSlide(pptx, slideSpec);
     else if (slideSpec.type === "timeline") addTimelineSlide(pptx, slideSpec);
     else if (slideSpec.type === "checklist") addChecklistSlide(pptx, slideSpec);
+    else if (slideSpec.type === "asset") addAssetSlide(pptx, slideSpec);
     else throw new Error(`Unsupported slide type: ${slideSpec.type}`);
   }
 

@@ -1,0 +1,28 @@
+{
+  "contract_version": "1",
+  "request_id": "asset-pipeline-smoke-001",
+  "qa_dir": "dist/assets-smoke/qa",
+  "assets": [
+    {
+      "id": "projectile-cetz",
+      "driver": "typst-cetz",
+      "source": "fixtures/assets/projectile.typ",
+      "output": "dist/assets-smoke/assets/projectile.svg",
+      "preview": "dist/assets-smoke/previews/projectile.png"
+    },
+    {
+      "id": "energy-flow-graphviz",
+      "driver": "graphviz",
+      "source": "fixtures/assets/energy-flow.dot",
+      "output": "dist/assets-smoke/assets/energy-flow.svg",
+      "preview": "dist/assets-smoke/previews/energy-flow.png"
+    },
+    {
+      "id": "energy-chart-matplotlib",
+      "driver": "matplotlib",
+      "source": "fixtures/assets/energy-chart.json",
+      "output": "dist/assets-smoke/assets/energy-chart.svg",
+      "preview": "dist/assets-smoke/previews/energy-chart.png"
+    }
+  ]
+}

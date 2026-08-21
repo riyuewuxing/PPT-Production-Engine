@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/riyuewuxing/PPT-Production-Engine/schemas/asset-manifest.schema.json",
+  "title": "PPT Production Engine Asset Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "request_id", "qa_dir", "assets"],
+  "properties": {
+    "contract_version": {"const": "1"},
+    "request_id": {"type": "string", "minLength": 1},
+    "qa_dir": {"type": "string", "minLength": 1},
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "driver", "source", "output", "preview"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+$"},
+          "driver": {"enum": ["typst-cetz", "graphviz", "matplotlib"]},
+          "source": {"type": "string", "minLength": 1},
+          "output": {"type": "string", "minLength": 1},
+          "preview": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

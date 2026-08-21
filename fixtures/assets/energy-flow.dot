@@ -1,0 +1,14 @@
+digraph EnergyFlow {
+  graph [rankdir=LR, bgcolor="white", pad="0.35", nodesep="0.55", ranksep="0.7", size="10,5.625!", ratio="fill"];
+  node [shape=box, style="rounded,filled", fontname="Noto Sans CJK SC", fontsize=20, color="#B8C7D9", fillcolor="#F7FAFC", margin="0.22,0.14"];
+  edge [fontname="Noto Sans CJK SC", fontsize=16, color="#66788A", penwidth=2.0, arrowsize=0.8];
+
+  system [label="系统边界", fillcolor="#EAF3FF", color="#77A9E8"];
+  work [label="做功 W", fillcolor="#FFF3E8", color="#E6A36D"];
+  heat [label="热传递 Q", fillcolor="#F0FDF7", color="#72C39A"];
+  internal [label="内能 U 改变", fillcolor="#F5F0FF", color="#9F84D8"];
+
+  work -> system [label="能量跨边界"];
+  heat -> system [label="能量跨边界"];
+  system -> internal [label="ΔU"];
+}

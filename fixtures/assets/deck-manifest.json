@@ -1,0 +1,52 @@
+{
+  "engine_version": "0.4.0",
+  "request_id": "asset-pipeline-deck-smoke-001",
+  "deck": {
+    "title": "Approved Assets → Slide → Deck",
+    "layout": "LAYOUT_WIDE",
+    "author": "PPT Production Engine",
+    "company": "riyuewuxing",
+    "subject": "Asset pipeline migration smoke",
+    "language": "zh-CN",
+    "theme": {
+      "headFontFace": "Noto Sans CJK SC",
+      "bodyFontFace": "Noto Sans CJK SC",
+      "lang": "zh-CN"
+    }
+  },
+  "output": {
+    "pptx": "dist/assets-smoke/deck.pptx",
+    "qa_dir": "dist/assets-smoke/deck-qa",
+    "render_dir": "dist/assets-smoke/deck-rendered"
+  },
+  "quality": {
+    "min_slides": 4,
+    "require_wide": true,
+    "render_dpi": 144
+  },
+  "slides": [
+    {
+      "type": "title",
+      "title": "Approved Assets → Slide → Deck",
+      "subtitle": "Typst/CeTZ、Graphviz、matplotlib 先独立产出资产，再由 PptxGenJS 组装并真实渲染"
+    },
+    {
+      "type": "asset",
+      "title": "Scientific diagram · Typst + CeTZ",
+      "image": "dist/assets-smoke/previews/projectile.png",
+      "caption": "Migrated deterministic projectile-geometry fixture; asset is reviewed before deck assembly."
+    },
+    {
+      "type": "asset",
+      "title": "Relationship diagram · Graphviz",
+      "image": "dist/assets-smoke/previews/energy-flow.png",
+      "caption": "Work and heat transfer are routed through a deterministic graph-layout driver."
+    },
+    {
+      "type": "asset",
+      "title": "Data/chart asset · matplotlib",
+      "image": "dist/assets-smoke/previews/energy-chart.png",
+      "caption": "Declarative JSON is rendered by a constrained chart adapter; caller Python is never executed."
+    }
+  ]
+}

@@ -1,14 +1,18 @@
 {
   "name": "ppt-production-engine",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": false,
   "type": "module",
-  "description": "Stateless PPTX production, rendering, and QA engine for AI-orchestrated GitHub projects.",
+  "description": "Stateless presentation-asset, PPTX production, rendering, and QA engine for AI-orchestrated GitHub projects.",
   "license": "Apache-2.0",
   "scripts": {
     "build:fixture": "node engine/build_pptx.mjs --manifest fixtures/basic/build-manifest.json",
     "qa:fixture": "python3 engine/qa_package.py --manifest fixtures/basic/build-manifest.json",
     "render:fixture": "python3 engine/render_pptx.py --manifest fixtures/basic/build-manifest.json",
+    "assets:smoke": "python3 engine/render_asset.py --manifest fixtures/assets/asset-manifest.json",
+    "build:assets-smoke": "node engine/build_pptx.mjs --manifest fixtures/assets/deck-manifest.json",
+    "qa:assets-smoke": "python3 engine/qa_package.py --manifest fixtures/assets/deck-manifest.json",
+    "render:assets-smoke": "python3 engine/render_pptx.py --manifest fixtures/assets/deck-manifest.json",
     "build:handoff": "node engine/build_pptx.mjs --manifest handoff/current/build-manifest.json",
     "qa:handoff": "python3 engine/qa_package.py --manifest handoff/current/build-manifest.json",
     "render:handoff": "python3 engine/render_pptx.py --manifest handoff/current/build-manifest.json"

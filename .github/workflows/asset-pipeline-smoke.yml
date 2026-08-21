@@ -1,0 +1,120 @@
+name: Asset Pipeline Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - engine/render_asset.py
+      - engine/presets/**
+      - engine/build_pptx.mjs
+      - engine/capabilities.json
+      - fixtures/assets/**
+      - .github/workflows/asset-pipeline-smoke.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  asset-to-deck:
+    name: Asset -> slide -> deck -> real render
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout engine
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup pinned Typst
+        uses: typst-community/setup-typst@v5
+        with:
+          typst-version: '0.15.1'
+          cache-dependency-path: fixtures/assets/projectile.typ
+
+      - name: Install mature execution dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            graphviz librsvg2-bin libreoffice poppler-utils fonts-noto-cjk
+          python -m pip install --disable-pip-version-check --no-cache-dir matplotlib==3.11.1
+          npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Render independent assets
+        run: python engine/render_asset.py --manifest fixtures/assets/asset-manifest.json
+
+      - name: Build deck from rendered assets
+        run: node engine/build_pptx.mjs --manifest fixtures/assets/deck-manifest.json
+
+      - name: Package QA
+        run: python engine/qa_package.py --manifest fixtures/assets/deck-manifest.json
+
+      - name: Real deck render QA
+        run: python engine/render_pptx.py --manifest fixtures/assets/deck-manifest.json
+
+      - name: Upload transient migration evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppt-engine-asset-pipeline-${{ github.run_id }}
+          path: |
+            dist/assets-smoke/assets/*.svg
+            dist/assets-smoke/previews/*.png
+            dist/assets-smoke/qa/*.json
+            dist/assets-smoke/deck.pptx
+            dist/assets-smoke/deck-qa/*.json
+            dist/assets-smoke/deck-rendered/**/*.pdf
+            dist/assets-smoke/deck-rendered/**/*.png
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Publish non-sensitive asset-pipeline status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          def load(path):
+              p = Path(path)
+              return json.loads(p.read_text(encoding='utf-8')) if p.exists() else None
+
+          asset = load('dist/assets-smoke/qa/asset-qa.json')
+          build = load('dist/assets-smoke/deck-qa/build-result.json')
+          package = load('dist/assets-smoke/deck-qa/package-qa.json')
+          render = load('dist/assets-smoke/deck-qa/render-qa.json')
+          out = {
+              'workflow_status': os.environ.get('JOB_STATUS'),
+              'run_id': os.environ.get('GITHUB_RUN_ID'),
+              'engine_commit': os.environ.get('GITHUB_SHA'),
+              'asset_status': asset.get('status') if asset else None,
+              'asset_count': asset.get('asset_count') if asset else None,
+              'drivers': asset.get('drivers') if asset else None,
+              'build_status': build.get('status') if build else None,
+              'package_status': package.get('status') if package else None,
+              'render_status': render.get('status') if render else None,
+              'pptx_sha256': (render or package or build or {}).get('pptx_sha256'),
+              'rendered_pages': len(render.get('pages', [])) if render else None,
+              'artifact_name': f"ppt-engine-asset-pipeline-{os.environ.get('GITHUB_RUN_ID')}",
+          }
+          Path('status').mkdir(exist_ok=True)
+          Path('status/asset-pipeline-smoke.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(out, ensure_ascii=False, indent=2))
+          PY
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git add status/asset-pipeline-smoke.json
+          git commit -m "Record asset pipeline smoke ${GITHUB_RUN_ID}" || true
+          git push origin HEAD:main
