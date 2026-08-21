@@ -1,19 +1,19 @@
 {
   "workflow_status": "failure",
-  "run_id": "32459164459",
-  "engine_commit": "e70bfef3cc9f80d6eae5b12dff86543508fc1a1a",
+  "run_id": "32459371885",
+  "engine_commit": "760cef41c7c27657795e47b5acdffb97311d68ed",
   "branch": "run002-engine-runtime",
   "historical_source_git_blob_sha": "fc894e245543f8dfe731d06f31ff293e0d46c165",
   "reviewed_v1_sha256": "fffc24a5286d14a8ac5c4364e86d07a50a4ee43b6d1b006abd62bcb4fdd5b94c",
-  "rebuilt_v1_sha256": null,
-  "v1_review_inheritance_eligible": null,
-  "migration_status": null,
-  "native_object_animation_slides": null,
-  "semantic_readback_pass": null,
+  "rebuilt_v1_sha256": "6f602a506a41a505183758b837c5293b72934938c894046e59f1c49c3e7902df",
+  "v1_review_inheritance_eligible": false,
+  "migration_status": "FAIL",
+  "native_object_animation_slides": [],
+  "semantic_readback_pass": true,
   "package_status": null,
   "render_status": null,
   "rendered_pages": null,
-  "v2_pptx_sha256": null,
+  "v2_pptx_sha256": "d6644d6b2cbeb7267ecedb5735b7dcb46516221412cb6284f4586eb10faf1dcd",
   "runtime_receipt_status": null,
-  "artifact_name": "run002-native-migration-32459164459"
+  "artifact_name": "run002-native-migration-32459371885"
 }
