@@ -1,0 +1,9 @@
+{
+  "contract_version": "1",
+  "driver": "legacy-pptxgenjs-hash-pinned",
+  "source": "handoff/run002/build_internal_energy.js",
+  "expected_git_blob_sha": "fc894e245543f8dfe731d06f31ff293e0d46c165",
+  "project_root": "dist/run002",
+  "expected_output": "exports/internal_energy_change_benchmark_v1.pptx",
+  "qa": "dist/run002/qa/legacy-rebuild.json"
+}
