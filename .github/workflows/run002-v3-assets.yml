@@ -36,7 +36,10 @@ jobs:
           python -m pip install --disable-pip-version-check --no-cache-dir Pillow
 
       - name: Generate independent V3 assets
-        run: node handoff/run002-v3/generate_assets.js
+        run: |
+          cp handoff/run002-v3/generate_assets.js handoff/run002-v3/.generate_assets.runtime.cjs
+          node handoff/run002-v3/.generate_assets.runtime.cjs
+          rm -f handoff/run002-v3/.generate_assets.runtime.cjs
 
       - name: Semantic and structural asset QA
         run: |
@@ -84,9 +87,9 @@ jobs:
       - name: Build hash-bound asset receipt and contact sheet
         run: |
           python - <<'PY'
-          import hashlib, json, math
+          import hashlib, json
           from pathlib import Path
-          from PIL import Image, ImageOps, ImageDraw
+          from PIL import Image, ImageDraw
           root=Path('dist/run002-v3/assets')
           def sha(p):
               h=hashlib.sha256(); h.update(p.read_bytes()); return h.hexdigest()
@@ -97,11 +100,10 @@ jobs:
           sem=json.loads((root/'semantic-qa.json').read_text(encoding='utf-8'))
           out={'status':'PASS' if sem.get('status')=='PASS' and len(rows)==15 else 'FAIL','semantic_qa':'assets/semantic-qa.json','rendered_assets':rows}
           (root/'asset-render-receipt.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
-          # contact sheet is convenience only, never final asset review evidence
           thumbs=[]
           for p in pngs:
-              im=Image.open(p).convert('RGB'); im.thumbnail((450,210));
-              canvas=Image.new('RGB',(470,245),'white'); canvas.paste(im,((470-im.width)//2,10));
+              im=Image.open(p).convert('RGB'); im.thumbnail((450,210))
+              canvas=Image.new('RGB',(470,245),'white'); canvas.paste(im,((470-im.width)//2,10))
               d=ImageDraw.Draw(canvas); d.text((15,220),p.stem,fill='black'); thumbs.append(canvas)
           sheet=Image.new('RGB',(470*3,245*5),'white')
           for idx,im in enumerate(thumbs): sheet.paste(im,((idx%3)*470,(idx//3)*245))
