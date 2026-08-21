@@ -113,7 +113,6 @@ def small_cylinder(x, y, w, h, piston_x, hot=False, ident=''):
 
 def asset2():
     b = text(600,36,'结果都可能升温，但能量跨边界的机制不同',34,C['ink'],700,'middle')
-    # Work panel
     b += rect(38,82,535,430,C['blueFill'],C['blue'],3,28,'filter="url(#shadow)"')
     b += text(84,125,'路径 A｜做功',30,C['blue'],800)
     b += text(84,164,'推动边界 → 压缩气体',25,C['ink'],650)
@@ -125,7 +124,6 @@ def asset2():
     b += arrow(290,317,382,317,C['blue'],10,'boundary-motion')
     b += pill(80,430,195,48,'外界力作用于活塞',C['paper'],C['blue'],21)
     b += pill(325,430,205,48,'活塞推动系统边界',C['paper'],C['blue'],21)
-    # Heat panel
     b += rect(625,82,537,430,C['heatFill'],C['heat'],3,28,'filter="url(#shadow)"')
     b += text(670,125,'路径 B｜热传递',30,C['heat'],800)
     b += text(670,164,'温度差 → 能量传递',25,C['ink'],650)
@@ -144,10 +142,9 @@ def piston_scene(x, y, w, h, piston_x, hot, set_id):
     b = rect(x,y,w,h,C['paper'],C['slate'],4,24, f'id="{set_id}-container" data-role="container"')
     b += rect(piston_x,y+22,28,h-44,C['blue'],C['blue'],0,12, f'id="{set_id}-piston"')
     coords = [(piston_x+52,y+66),(piston_x+96,y+58),(piston_x+140,y+70),(piston_x+184,y+62),(piston_x+225,y+74),(piston_x+70,y+130),(piston_x+116,y+122),(piston_x+160,y+137),(piston_x+205,y+126),(piston_x+245,y+141),(piston_x+95,y+192),(piston_x+185,y+190)]
-    color=C['heat'] if hot else C['heat']
     b += f'<g id="{set_id}-gas" data-role="particle-set" data-conservation-key="gas-sample">'
     for px,py in coords:
-        if px <= x+w-24 and py <= y+h-24: b += particle(px,py,color,7)
+        if px <= x+w-24 and py <= y+h-24: b += particle(px,py,C['heat'],7)
     b += '</g>'
     return b
 
@@ -158,7 +155,6 @@ def asset5():
     b += text(920,92,'After',26,C['muted'],800,'middle')
     b += piston_scene(70,125,430,300,110,False,'before')
     b += piston_scene(700,125,430,300,830,True,'after')
-    # ghost old piston position, clearly separated from live piston
     b += rect(745,147,28,256,'none','#8BB9F1',3,10,'stroke-dasharray="12 9"')
     b += text(760,448,'虚线：压缩前活塞位置',21,C['muted'],650,'middle')
     b += arrow(525,275,675,275,C['blue'],13,'piston-displacement')
@@ -175,8 +171,6 @@ def asset11():
     b += text(600,145,'系统此刻的状态',31,C['slate'],800,'middle')
     b += pill(445,215,145,58,'温度 T',C['soft'],C['slate'],26,'temperature')
     b += pill(610,215,145,58,'内能 U',C['slate'],C['paper'],26,'internal-energy')
-    # Process arrows cross the boundary but terminate in a neutral process zone,
-    # not at T or U, so they cannot be read as W->T or Q->U.
     b += text(120,305,'做功 W',30,C['blue'],800)
     b += arrow(105,350,435,350,C['blue'],13,'work-process','data-role="flow-arrow" data-cross-boundary="state-system"')
     b += text(950,305,'热传递 Q',30,C['heat'],800)
@@ -191,3 +185,4 @@ write('02-s02-work-vs-heat.svg', asset2())
 write('05-s05-compression-work.svg', asset5())
 write('11-s11-state-vs-process.svg', asset11())
 print('iteration5 redrew final four strict-review assets')
+# Trigger marker: iteration5 must run under the workflow version that explicitly invokes this script.
