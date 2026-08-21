@@ -8,6 +8,7 @@ on:
       - engine/semantic_svg_lint.py
       - engine/ppt_master_adapter.py
       - engine/qa_package.py
+      - engine/qa_animation_states.py
       - engine/render_pptx.py
       - .github/workflows/run002-v3-assets.yml
   workflow_dispatch:
@@ -52,7 +53,8 @@ jobs:
             handoff/run002-v3/refine_iteration6.py \
             handoff/run002-v3/refine_iteration7.py \
             handoff/run002-v3/prepare_playable_project.py \
-            engine/semantic_svg_lint.py
+            engine/semantic_svg_lint.py \
+            engine/qa_animation_states.py
           node --check handoff/run002-v3/generate_assets.js
           python - <<'PY'
           import json, sys
@@ -61,13 +63,19 @@ jobs:
           package = json.loads(Path('package.json').read_text(encoding='utf-8'))
           source = Path('handoff/run002-v3/generate_assets.js').read_text(encoding='utf-8')
           render_manifest = json.loads(Path('handoff/run002-v3/playable-render-manifest.json').read_text(encoding='utf-8'))
+          master_manifest = json.loads(Path('handoff/run002-v3/ppt-master-playable-manifest.json').read_text(encoding='utf-8'))
           failures=[]
           if package.get('type') == 'module' and 'require(' in source and '.generate_assets.runtime.cjs' not in workflow:
               failures.append('CommonJS generator in ESM repo is not executed through explicit .cjs compatibility copy')
           if 'prepare_playable_project.py' not in workflow:
               failures.append('playable project prep is not wired into workflow')
+          if 'qa_animation_states.py' not in workflow:
+              failures.append('animation-state QA is not wired into workflow')
           if render_manifest['quality'].get('required_animation_slides') != [7, 13, 15]:
               failures.append('playable render manifest must require animation slides [7, 13, 15]')
+          for key in ('animation_state_dir', 'animation_state_qa'):
+              if not master_manifest.get(key):
+                  failures.append(f'ppt-master playable manifest missing {key}')
           if failures:
               print('\n'.join(failures)); sys.exit(2)
           print('cheap contract preflight PASS')
@@ -193,6 +201,9 @@ jobs:
       - name: Exact playable package QA
         run: python engine/qa_package.py --manifest handoff/run002-v3/playable-render-manifest.json
 
+      - name: Render animation click states and verify native timing
+        run: python engine/qa_animation_states.py --manifest handoff/run002-v3/ppt-master-playable-manifest.json
+
       - name: Render playable candidate with LibreOffice
         run: python engine/render_pptx.py --manifest handoff/run002-v3/playable-render-manifest.json
 
@@ -205,6 +216,7 @@ jobs:
           prep = load('dist/run002-v3/playable-qa/playable-project-prep.json')
           master = load('dist/run002-v3/playable-qa/ppt-master-playable-qa.json')
           package = load('dist/run002-v3/playable-qa/package-qa.json')
+          states = load('dist/run002-v3/playable-qa/animation-state-qa.json')
           render = load('dist/run002-v3/playable-qa/render-qa.json')
           required = [7, 13, 15]
           actual_raw = master.get('native_object_animation_slides') or []
@@ -215,13 +227,14 @@ jobs:
                   for key in ('index', 'slide', 'slide_index'):
                       if isinstance(item.get(key), int): actual.append(item[key]); break
           actual = sorted(set(actual))
-          hashes = [master.get('pptx_sha256'), package.get('pptx_sha256'), render.get('pptx_sha256')]
+          hashes = [master.get('pptx_sha256'), package.get('pptx_sha256'), states.get('pptx_sha256'), render.get('pptx_sha256')]
           same_generation = len(set(hashes)) == 1 and all(hashes)
           checks = {
               'prep_pass': prep.get('status') == 'PASS' and prep.get('svg_count') == 15,
               'ppt_master_pass': master.get('status') == 'PASS',
               'required_animation_slides_present': set(required).issubset(set(actual)),
               'package_pass': package.get('status') == 'PASS',
+              'animation_state_pass': states.get('status') == 'PASS' and states.get('rendered_state_count') == 13,
               'render_pass': render.get('status') == 'PASS' and len(render.get('pages', [])) == 15,
               'same_generation': same_generation,
           }
@@ -231,10 +244,11 @@ jobs:
               'v3_playable_pptx_sha256': hashes[0] if same_generation else None,
               'required_animation_slides': required,
               'actual_animation_slides': actual,
+              'animation_state_count': states.get('rendered_state_count'),
               'rendered_pages': len(render.get('pages', [])),
               'checks': checks,
               'target_powerpoint_playback': 'NOT_RUN_REQUIRED_FOR_FINAL',
-              'scope': 'Native animation package/render gate only; final acceptance still requires PowerPoint Desktop state-by-state playback.',
+              'scope': 'Native animation package/render/state gate only; final acceptance still requires PowerPoint Desktop state-by-state playback.',
           }
           Path('dist/run002-v3/playable-qa/playable-receipt.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
           print(json.dumps(out, ensure_ascii=False, indent=2))
@@ -254,6 +268,8 @@ jobs:
             dist/run002-v3/playable-qa/*.json
             dist/run002-v3/playable-rendered/*.pdf
             dist/run002-v3/playable-rendered/*.png
+            dist/run002-v3/playable-animation-states/*.svg
+            dist/run002-v3/playable-animation-states/*.png
             dist/run002-v3/playable-project/animations.json
           retention-days: 3
           if-no-files-found: warn
@@ -281,6 +297,7 @@ jobs:
               'playable_status': receipt.get('status') if receipt else None,
               'v3_playable_pptx_sha256': receipt.get('v3_playable_pptx_sha256') if receipt else None,
               'actual_animation_slides': receipt.get('actual_animation_slides') if receipt else None,
+              'animation_state_count': receipt.get('animation_state_count') if receipt else None,
               'rendered_pages': receipt.get('rendered_pages') if receipt else None,
               'target_powerpoint_playback': 'NOT_RUN_REQUIRED_FOR_FINAL',
               'artifact_name': f"run002-v3-playable-{os.environ.get('GITHUB_RUN_ID')}",
