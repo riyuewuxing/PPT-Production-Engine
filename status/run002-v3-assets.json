@@ -5,5 +5,9 @@
   "asset_stage_status": "PASS",
   "asset_count": 15,
   "artifact_name": "run002-v3-assets-32472473317",
-  "assistant_visual_review": "PENDING"
+  "artifact_id": 9443060287,
+  "artifact_sha256": "236a0869cfd99665e494a7ca90feea200bdf5df8fc290e785ed6e0a015573b66",
+  "assistant_visual_review": "PASS",
+  "visual_review_evidence": "status/run002-v3-asset-visual-review.json",
+  "scope": "ASSET_GATE_ONLY"
 }
