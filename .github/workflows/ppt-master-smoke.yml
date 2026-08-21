@@ -1,0 +1,104 @@
+name: PPT Master Native Animation Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - engine/ppt_master_adapter.py
+      - fixtures/ppt-master/**
+      - .github/workflows/ppt-master-smoke.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  ppt-master-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout engine
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned PPT Master
+        uses: actions/checkout@v4
+        with:
+          repository: hugohe3/ppt-master
+          ref: 228fe8b7558f6c2abeb557952b10c8caff574b26
+          path: vendor/ppt-master
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice poppler-utils fonts-noto-cjk
+          python -m pip install --disable-pip-version-check --no-cache-dir \
+            python-pptx XlsxWriter skia-pathops uharfbuzz Pillow numpy
+
+      - name: Run bounded PPT Master adapter
+        run: python engine/ppt_master_adapter.py --manifest fixtures/ppt-master/adapter-manifest.json
+
+      - name: Package QA
+        run: python engine/qa_package.py --manifest fixtures/ppt-master/render-manifest.json
+
+      - name: Real render QA
+        run: python engine/render_pptx.py --manifest fixtures/ppt-master/render-manifest.json
+
+      - name: Upload transient verification evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppt-master-smoke-${{ github.run_id }}
+          path: |
+            dist/ppt-master-smoke/native-animation.pptx
+            dist/ppt-master-smoke/ppt-master-qa.json
+            dist/ppt-master-smoke/deck-qa/*.json
+            dist/ppt-master-smoke/rendered/**/*.pdf
+            dist/ppt-master-smoke/rendered/**/*.png
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Publish non-sensitive status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          def load(p):
+              p = Path(p)
+              return json.loads(p.read_text(encoding='utf-8')) if p.exists() else None
+          pm = load('dist/ppt-master-smoke/ppt-master-qa.json')
+          package = load('dist/ppt-master-smoke/deck-qa/package-qa.json')
+          render = load('dist/ppt-master-smoke/deck-qa/render-qa.json')
+          out = {
+              'workflow_status': os.environ.get('JOB_STATUS'),
+              'run_id': os.environ.get('GITHUB_RUN_ID'),
+              'engine_commit': os.environ.get('GITHUB_SHA'),
+              'ppt_master_commit': '228fe8b7558f6c2abeb557952b10c8caff574b26',
+              'adapter_status': pm.get('status') if pm else None,
+              'native_object_animation_slide_count': pm.get('native_object_animation_slide_count') if pm else None,
+              'pptx_sha256': (render or package or pm or {}).get('pptx_sha256'),
+              'package_status': package.get('status') if package else None,
+              'render_status': render.get('status') if render else None,
+              'rendered_pages': len(render.get('pages', [])) if render else None,
+              'artifact_name': f"ppt-master-smoke-{os.environ.get('GITHUB_RUN_ID')}",
+          }
+          Path('status').mkdir(exist_ok=True)
+          Path('status/ppt-master-smoke.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(out, ensure_ascii=False, indent=2))
+          PY
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git add status/ppt-master-smoke.json
+          git commit -m "Record PPT Master smoke ${GITHUB_RUN_ID}" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
