@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import subprocess
+import tempfile
 from pathlib import Path
 
 ROOT = Path.cwd().resolve()
@@ -94,9 +95,38 @@ def main() -> int:
     except ValueError as exc:
         raise SystemExit("expected output escapes project_root") from exc
 
+    # A historical CommonJS .js file must remain byte-for-byte identical to its
+    # reviewed Git blob. When this Engine repository is itself ESM (package.json
+    # contains type=module), Node would reinterpret that .js file as ESM and
+    # reject require(). Execute an exact temporary .cjs byte-copy instead of
+    # modifying or renaming the hash-pinned source. The copied bytes are checked
+    # against the same Git blob immediately before execution and removed after.
+    execution_source = source
+    execution_mode = "direct-cjs"
+    temporary_execution_source: Path | None = None
+    if source.suffix.lower() == ".js":
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=source.parent,
+            prefix=f".{source.stem}.",
+            suffix=".runtime.cjs",
+            delete=False,
+        ) as tmp:
+            tmp.write(source.read_bytes())
+            temporary_execution_source = Path(tmp.name).resolve()
+        if git_blob(temporary_execution_source) != actual_blob:
+            temporary_execution_source.unlink(missing_ok=True)
+            die("temporary CommonJS execution copy does not match locked source Git blob")
+        execution_source = temporary_execution_source
+        execution_mode = "exact-temporary-cjs-copy"
+
     env = dict(os.environ)
     env["PROJECT_PATH"] = str(project_root)
-    proc = subprocess.run(["node", str(source)], cwd=ROOT, env=env, text=True, encoding="utf-8", errors="replace", capture_output=True)
+    try:
+        proc = subprocess.run(["node", str(execution_source)], cwd=ROOT, env=env, text=True, encoding="utf-8", errors="replace", capture_output=True)
+    finally:
+        if temporary_execution_source is not None:
+            temporary_execution_source.unlink(missing_ok=True)
     if proc.stdout:
         print(proc.stdout, end="")
     if proc.stderr:
@@ -112,6 +142,7 @@ def main() -> int:
         "source": source.relative_to(ROOT).as_posix(),
         "source_git_blob_sha": actual_blob,
         "source_sha256": sha256(source),
+        "execution_mode": execution_mode,
         "output": output.relative_to(ROOT).as_posix(),
         "pptx_sha256": sha256(output),
     }

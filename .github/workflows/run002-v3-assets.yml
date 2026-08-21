@@ -1,0 +1,314 @@
+name: Run002 V3 Asset And Playable Deck
+
+on:
+  push:
+    branches: [run002-v3-assets]
+    paths:
+      - handoff/run002-v3/**
+      - engine/semantic_svg_lint.py
+      - engine/ppt_master_adapter.py
+      - engine/qa_package.py
+      - engine/qa_animation_states.py
+      - engine/render_pptx.py
+      - .github/workflows/run002-v3-assets.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  v3-assets-playable:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout Engine branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Checkout pinned PPT Master
+        uses: actions/checkout@v4
+        with:
+          repository: hugohe3/ppt-master
+          ref: 228fe8b7558f6c2abeb557952b10c8caff574b26
+          path: vendor/ppt-master
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cheap contract preflight
+        run: |
+          python -m py_compile \
+            handoff/run002-v3/refine_failed_assets.py \
+            handoff/run002-v3/refine_iteration3.py \
+            handoff/run002-v3/refine_iteration4.py \
+            handoff/run002-v3/refine_iteration5.py \
+            handoff/run002-v3/refine_iteration6.py \
+            handoff/run002-v3/refine_iteration7.py \
+            handoff/run002-v3/prepare_playable_project.py \
+            engine/semantic_svg_lint.py \
+            engine/qa_animation_states.py
+          node --check handoff/run002-v3/generate_assets.js
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          workflow = Path('.github/workflows/run002-v3-assets.yml').read_text(encoding='utf-8')
+          package = json.loads(Path('package.json').read_text(encoding='utf-8'))
+          source = Path('handoff/run002-v3/generate_assets.js').read_text(encoding='utf-8')
+          render_manifest = json.loads(Path('handoff/run002-v3/playable-render-manifest.json').read_text(encoding='utf-8'))
+          master_manifest = json.loads(Path('handoff/run002-v3/ppt-master-playable-manifest.json').read_text(encoding='utf-8'))
+          failures=[]
+          if package.get('type') == 'module' and 'require(' in source and '.generate_assets.runtime.cjs' not in workflow:
+              failures.append('CommonJS generator in ESM repo is not executed through explicit .cjs compatibility copy')
+          if 'prepare_playable_project.py' not in workflow:
+              failures.append('playable project prep is not wired into workflow')
+          if 'qa_animation_states.py' not in workflow:
+              failures.append('animation-state QA is not wired into workflow')
+          if render_manifest['quality'].get('required_animation_slides') != [7, 13, 15]:
+              failures.append('playable render manifest must require animation slides [7, 13, 15]')
+          for key in ('animation_state_dir', 'animation_state_qa'):
+              if not master_manifest.get(key):
+                  failures.append(f'ppt-master playable manifest missing {key}')
+          if failures:
+              print('\n'.join(failures)); sys.exit(2)
+          print('cheap contract preflight PASS')
+          PY
+
+      - name: Install runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice poppler-utils librsvg2-bin fonts-noto-cjk
+          npm install --ignore-scripts --no-audit --no-fund
+          python -m pip install --disable-pip-version-check --no-cache-dir \
+            python-pptx XlsxWriter skia-pathops uharfbuzz Pillow numpy
+
+      - name: Generate reviewed V3 assets
+        run: |
+          cp handoff/run002-v3/generate_assets.js handoff/run002-v3/.generate_assets.runtime.cjs
+          node handoff/run002-v3/.generate_assets.runtime.cjs
+          rm -f handoff/run002-v3/.generate_assets.runtime.cjs
+          python handoff/run002-v3/refine_failed_assets.py
+          python handoff/run002-v3/refine_iteration3.py
+          python handoff/run002-v3/refine_iteration4.py
+          python handoff/run002-v3/refine_iteration5.py
+          python handoff/run002-v3/refine_iteration6.py
+          python handoff/run002-v3/refine_iteration7.py
+
+      - name: Semantic geometry preflight
+        run: |
+          python engine/semantic_svg_lint.py \
+            dist/run002-v3/assets/svg/01-s01-hero-two-channels.svg \
+            dist/run002-v3/assets/svg/02-s02-work-vs-heat.svg \
+            dist/run002-v3/assets/svg/05-s05-compression-work.svg \
+            dist/run002-v3/assets/svg/11-s11-state-vs-process.svg \
+            --json-out dist/run002-v3/assets/semantic-geometry-qa.json
+
+      - name: Semantic and structural asset QA
+        run: |
+          python - <<'PY'
+          import hashlib, json, re, sys
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path('dist/run002-v3')
+          manifest = json.loads((root/'assets/asset-manifest.json').read_text(encoding='utf-8'))
+          failures=[]; rows=[]
+          if len(manifest.get('assets',[])) != 15:
+              failures.append(f"expected 15 assets, got {len(manifest.get('assets',[]))}")
+          def sha(p):
+              h=hashlib.sha256(); h.update(p.read_bytes()); return h.hexdigest()
+          for item in manifest.get('assets',[]):
+              p = root/item['svg']
+              if not p.is_file():
+                  failures.append(f"missing {p}"); continue
+              raw=p.read_text(encoding='utf-8')
+              try:
+                  svg=ET.fromstring(raw)
+              except Exception as e:
+                  failures.append(f"{p.name}: XML parse {e}"); continue
+              if svg.attrib.get('viewBox') != '0 0 1200 560':
+                  failures.append(f"{p.name}: viewBox={svg.attrib.get('viewBox')}")
+              semantic_text=''.join(svg.itertext())
+              compact=re.sub(r'\s+','',semantic_text)
+              missing=[x for x in item.get('required_text',[]) if re.sub(r'\s+','',x) not in compact]
+              if missing: failures.append(f"{p.name}: missing required text {missing}")
+              rows.append({'slide':item['slide'],'id':item['id'],'svg':item['svg'],'svg_sha256':sha(p),'required_text':item.get('required_text',[]),'missing':missing})
+          out={'status':'PASS' if not failures else 'FAIL','assets':rows,'failures':failures}
+          (root/'assets').mkdir(parents=True,exist_ok=True)
+          (root/'assets/semantic-qa.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          if failures: sys.exit(2)
+          PY
+
+      - name: Render every asset to PNG
+        run: |
+          mkdir -p dist/run002-v3/assets/png
+          for f in dist/run002-v3/assets/svg/*.svg; do
+            name=$(basename "$f" .svg)
+            rsvg-convert -w 1800 --background-color '#FFF8EF' "$f" -o "dist/run002-v3/assets/png/${name}.png"
+          done
+
+      - name: Build hash-bound asset receipt
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path('dist/run002-v3/assets')
+          def sha(p):
+              h=hashlib.sha256(); h.update(p.read_bytes()); return h.hexdigest()
+          rows=[]
+          for p in sorted((root/'png').glob('*.png')):
+              slide=int(p.name.split('-')[0])
+              svg=(root/'svg'/p.name.replace('.png','.svg'))
+              rows.append({'slide':slide,'svg':svg.relative_to(Path('dist/run002-v3')).as_posix(),'svg_sha256':sha(svg),'png':p.relative_to(Path('dist/run002-v3')).as_posix(),'png_sha256':sha(p)})
+          sem=json.loads((root/'semantic-qa.json').read_text(encoding='utf-8'))
+          geom=json.loads((root/'semantic-geometry-qa.json').read_text(encoding='utf-8'))
+          prior=Path('status/run002-v3-asset-visual-review.json')
+          prior_match=False
+          if prior.exists():
+              approved=json.loads(prior.read_text(encoding='utf-8'))
+              approved_rows={row['slide']: row for row in approved.get('assets',[])}
+              prior_match=approved.get('assistant_visual_review')=='PASS' and all(
+                  approved_rows.get(row['slide'],{}).get('svg_sha256')==row['svg_sha256'] and approved_rows.get(row['slide'],{}).get('png_sha256')==row['png_sha256']
+                  for row in rows
+              )
+          out={
+              'status':'PASS' if sem.get('status')=='PASS' and geom.get('status')=='PASS' and len(rows)==15 else 'FAIL',
+              'semantic_qa':'assets/semantic-qa.json',
+              'semantic_geometry_qa':'assets/semantic-geometry-qa.json',
+              'render_background':'#FFF8EF',
+              'rendered_assets':rows,
+              'assistant_visual_review_reused_by_exact_hash': prior_match,
+          }
+          (root/'asset-render-receipt.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          if out['status']!='PASS' or not prior_match:
+              raise SystemExit('asset machine PASS required and previous assistant visual PASS must match exact hashes')
+          PY
+
+      - name: Prepare playable SVG project
+        run: python handoff/run002-v3/prepare_playable_project.py
+
+      - name: Build native playable PPTX with PPT Master
+        run: python engine/ppt_master_adapter.py --manifest handoff/run002-v3/ppt-master-playable-manifest.json
+
+      - name: Exact playable package QA
+        run: python engine/qa_package.py --manifest handoff/run002-v3/playable-render-manifest.json
+
+      - name: Render animation click states and verify native timing
+        run: python engine/qa_animation_states.py --manifest handoff/run002-v3/ppt-master-playable-manifest.json
+
+      - name: Render playable candidate with LibreOffice
+        run: python engine/render_pptx.py --manifest handoff/run002-v3/playable-render-manifest.json
+
+      - name: Bind playable receipt
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          def load(p): return json.loads(Path(p).read_text(encoding='utf-8'))
+          prep = load('dist/run002-v3/playable-qa/playable-project-prep.json')
+          master = load('dist/run002-v3/playable-qa/ppt-master-playable-qa.json')
+          package = load('dist/run002-v3/playable-qa/package-qa.json')
+          states = load('dist/run002-v3/playable-qa/animation-state-qa.json')
+          render = load('dist/run002-v3/playable-qa/render-qa.json')
+          required = [7, 13, 15]
+          actual_raw = master.get('native_object_animation_slides') or []
+          actual = []
+          for item in actual_raw:
+              if isinstance(item, int): actual.append(item)
+              elif isinstance(item, dict):
+                  for key in ('index', 'slide', 'slide_index'):
+                      if isinstance(item.get(key), int): actual.append(item[key]); break
+          actual = sorted(set(actual))
+          hashes = [master.get('pptx_sha256'), package.get('pptx_sha256'), states.get('pptx_sha256'), render.get('pptx_sha256')]
+          same_generation = len(set(hashes)) == 1 and all(hashes)
+          checks = {
+              'prep_pass': prep.get('status') == 'PASS' and prep.get('svg_count') == 15,
+              'ppt_master_pass': master.get('status') == 'PASS',
+              'required_animation_slides_present': set(required).issubset(set(actual)),
+              'package_pass': package.get('status') == 'PASS',
+              'animation_state_pass': states.get('status') == 'PASS' and states.get('rendered_state_count') == 13,
+              'render_pass': render.get('status') == 'PASS' and len(render.get('pages', [])) == 15,
+              'same_generation': same_generation,
+          }
+          ok = all(checks.values())
+          out = {
+              'status': 'PASS_PLAYABLE_PRE_TARGET_PLAYER' if ok else 'FAIL',
+              'v3_playable_pptx_sha256': hashes[0] if same_generation else None,
+              'required_animation_slides': required,
+              'actual_animation_slides': actual,
+              'animation_state_count': states.get('rendered_state_count'),
+              'rendered_pages': len(render.get('pages', [])),
+              'checks': checks,
+              'target_powerpoint_playback': 'NOT_RUN_REQUIRED_FOR_FINAL',
+              'scope': 'Native animation package/render/state gate only; final acceptance still requires PowerPoint Desktop state-by-state playback.',
+          }
+          Path('dist/run002-v3/playable-qa/playable-receipt.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(out, ensure_ascii=False, indent=2))
+          if not ok: sys.exit(1)
+          PY
+
+      - name: Upload V3 playable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run002-v3-playable-${{ github.run_id }}
+          path: |
+            dist/run002-v3/assets/**/*.svg
+            dist/run002-v3/assets/**/*.png
+            dist/run002-v3/assets/*.json
+            dist/run002-v3/playable-deck/*.pptx
+            dist/run002-v3/playable-qa/*.json
+            dist/run002-v3/playable-rendered/*.pdf
+            dist/run002-v3/playable-rendered/*.png
+            dist/run002-v3/playable-animation-states/*.svg
+            dist/run002-v3/playable-animation-states/*.png
+            dist/run002-v3/playable-project/animations.json
+          retention-days: 3
+          if-no-files-found: warn
+
+      - name: Publish V3 playable status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          def load(p):
+              q=Path(p)
+              return json.loads(q.read_text(encoding='utf-8')) if q.exists() else None
+          asset = load('dist/run002-v3/assets/asset-render-receipt.json')
+          receipt = load('dist/run002-v3/playable-qa/playable-receipt.json')
+          out = {
+              'workflow_status': os.environ.get('JOB_STATUS'),
+              'run_id': os.environ.get('GITHUB_RUN_ID'),
+              'engine_commit': os.environ.get('GITHUB_SHA'),
+              'asset_stage_status': asset.get('status') if asset else None,
+              'asset_count': len(asset.get('rendered_assets',[])) if asset else 0,
+              'assistant_asset_visual_review_reused_by_exact_hash': asset.get('assistant_visual_review_reused_by_exact_hash') if asset else None,
+              'playable_status': receipt.get('status') if receipt else None,
+              'v3_playable_pptx_sha256': receipt.get('v3_playable_pptx_sha256') if receipt else None,
+              'actual_animation_slides': receipt.get('actual_animation_slides') if receipt else None,
+              'animation_state_count': receipt.get('animation_state_count') if receipt else None,
+              'rendered_pages': receipt.get('rendered_pages') if receipt else None,
+              'target_powerpoint_playback': 'NOT_RUN_REQUIRED_FOR_FINAL',
+              'artifact_name': f"run002-v3-playable-{os.environ.get('GITHUB_RUN_ID')}",
+          }
+          Path('status').mkdir(exist_ok=True)
+          Path('status/run002-v3-playable.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git add status/run002-v3-playable.json
+          git commit -m "Record Run002 V3 playable ${GITHUB_RUN_ID}" || true
+          git pull --rebase origin run002-v3-assets
+          git push origin HEAD:run002-v3-assets

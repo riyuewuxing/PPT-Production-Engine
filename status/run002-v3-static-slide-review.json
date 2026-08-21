@@ -1,0 +1,28 @@
+{
+  "status": "BLOCKED_DYNAMIC_REQUIRED",
+  "run_id": "32473546900",
+  "static_deck_sha256": "e954ea251483618c4477cbfea79d2057b629794b9803b21a407ad1736776f482",
+  "rendered_pages": 15,
+  "assistant_static_review": "CONDITIONAL_PASS_FOR_STATIC_INFRASTRUCTURE_ONLY",
+  "hard_fail_count_for_final": 1,
+  "scope": "Full-size LibreOffice-rendered static deck pages were inspected after asset composition. This does not approve animation or Microsoft PowerPoint playback.",
+  "page_results": [
+    {"slide":1,"static_visual":"PASS"},
+    {"slide":2,"static_visual":"PASS"},
+    {"slide":3,"static_visual":"PASS"},
+    {"slide":4,"static_visual":"PASS"},
+    {"slide":5,"static_visual":"PASS"},
+    {"slide":6,"static_visual":"PASS"},
+    {"slide":7,"static_visual":"PASS_STATIC_ONLY","dynamic_required":true,"reason":"Energy ledger page should reveal W/Q/ΔU in presenter-paced order."},
+    {"slide":8,"static_visual":"PASS"},
+    {"slide":9,"static_visual":"PASS"},
+    {"slide":10,"static_visual":"PASS"},
+    {"slide":11,"static_visual":"PASS"},
+    {"slide":12,"static_visual":"PASS"},
+    {"slide":13,"static_visual":"BLOCKED_DYNAMIC_REQUIRED","dynamic_required":true,"reason":"Initial static view only contains A/B/C/D answer rails and fixed answer boxes. Final deck must reveal or otherwise display the actual judgment statements before this page can pass."},
+    {"slide":14,"static_visual":"PASS"},
+    {"slide":15,"static_visual":"PASS_STATIC_ONLY","dynamic_required":true,"reason":"Synthesis chain should reveal process channels, ΔU and observable state change in order."}
+  ],
+  "next_gate": "Create animation-state manifest for slides 7, 13, and 15, generate the playable deck, then perform state-by-state and target-player playback review.",
+  "final_decision": "NOT_FINAL"
+}

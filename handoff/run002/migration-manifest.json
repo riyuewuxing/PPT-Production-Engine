@@ -1,0 +1,39 @@
+{
+  "contract_version": "1",
+  "mode": "historical-native-migration",
+  "source_pptx": "dist/run002/normalized/internal_energy_change_benchmark_v1.pptx",
+  "output_pptx": "dist/run002/exports/internal_energy_change_benchmark_v2.pptx",
+  "work_dir": "dist/run002/work",
+  "qa_dir": "dist/run002/qa/migration",
+  "ppt_master_root": "vendor/ppt-master",
+  "ppt_master_commit": "228fe8b7558f6c2abeb557952b10c8caff574b26",
+  "expected_slides": 15,
+  "animation_targets": {
+    "7": [
+      {"semantic_id": "work-process", "phrase": "W：做功过程", "effect": "entrance_fade", "trigger": "on-click", "order": 1, "duration": 0.28},
+      {"semantic_id": "heat-process", "phrase": "Q：热传递过程", "effect": "entrance_fade", "trigger": "on-click", "order": 2, "duration": 0.28},
+      {"semantic_id": "state-change", "phrase": "ΔU：状态变化", "effect": "entrance_fade", "trigger": "on-click", "order": 3, "duration": 0.28}
+    ],
+    "15": [
+      {"semantic_id": "system-boundary", "phrase": "系统边界", "effect": "entrance_fade", "trigger": "on-click", "order": 1, "duration": 0.28},
+      {"semantic_id": "work", "phrase": "做功 W", "effect": "entrance_fade", "trigger": "on-click", "order": 2, "duration": 0.28},
+      {"semantic_id": "heat-transfer", "phrase": "热传递 Q", "effect": "entrance_fade", "trigger": "on-click", "order": 3, "duration": 0.28},
+      {"semantic_id": "energy-cross-boundary", "phrase": "能量跨边界", "effect": "entrance_fade", "trigger": "on-click", "order": 4, "duration": 0.28},
+      {"semantic_id": "internal-energy-change", "phrase": "内能 U 改变", "effect": "entrance_fade", "trigger": "on-click", "order": 5, "duration": 0.28},
+      {"semantic_id": "temperature-state-change", "phrase": "温度/状态变化", "effect": "entrance_fade", "trigger": "on-click", "order": 6, "duration": 0.28}
+    ]
+  },
+  "text_checks": [
+    {"slide": 7, "text": "ΔU = W + Q"}
+  ],
+  "semantic_checks": {
+    "2": ["快速压缩气体", "热水加热冷水"],
+    "4": ["系统：气体/水/物体", "W：外界对系统做功", "Q：系统吸热"],
+    "5": ["气体系统", "外界推活塞", "分子运动加剧"],
+    "6": ["冷水系统", "高温物体", "热量 Q"],
+    "8": ["同一系统", "初态 U₁", "末态 U₂", "做功路径", "热传递路径"],
+    "9": ["气体", "手/机械装置做功", "分子更快"],
+    "10": ["刹车片变热", "机械能减少", "微观运动更无序", "内能增加"],
+    "15": ["系统边界", "做功 W", "热传递 Q", "能量跨边界", "内能 U 改变", "温度/状态变化"]
+  }
+}

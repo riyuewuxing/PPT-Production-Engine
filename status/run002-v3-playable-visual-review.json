@@ -1,0 +1,49 @@
+{
+  "assistant_visual_review": "PASS",
+  "run_id": "32479008296",
+  "engine_commit": "b995365c5a494062c669dbefdad953864f19abd0",
+  "pptx_sha256": "dae7306d644f45a344f20dd654e8f1e2e0eecb12fb619b07682adcaa82c6a459",
+  "animation_state_qa_sha256": "aff07cb3f54c21a5ab93584f98014de847bfb255589930e0d6f5cd2ab8c08cbc",
+  "animated_slides": [7, 13, 15],
+  "animation_state_count": 13,
+  "checks": {
+    "state_sequence_visibility": "PASS",
+    "state_layout_no_overlap_or_clipping": "PASS",
+    "state_text_legibility": "PASS",
+    "playable_16_9_layout": "PASS",
+    "final_15_page_render_visual_review": "PASS"
+  },
+  "states": [
+    {"slide":7,"state":0,"after_clicks":0,"png_sha256":"b4571b7b9324afb5392aea11482871699a0aec8aabdbc37523600aaa4dfce1b3"},
+    {"slide":7,"state":1,"after_clicks":1,"png_sha256":"b5e8996f8c6faa7db33ca8d52b2d365a447a1d96dd3dc16488e67964d8be4fb6"},
+    {"slide":7,"state":2,"after_clicks":2,"png_sha256":"4790c7137603e0e5cc6cee7e2131792c3f55a03550d4150c433dafcdfe1a5414"},
+    {"slide":7,"state":3,"after_clicks":3,"png_sha256":"227862d9f7f33158727cf94630acc88f6e61eeb50561a3d663a8d715a777056f"},
+    {"slide":13,"state":0,"after_clicks":0,"png_sha256":"b6a7db17709371e5a2b6b6c6fa7bba4835c3cbffc5f713989fd41e10a12f884f"},
+    {"slide":13,"state":1,"after_clicks":1,"png_sha256":"8c9457e744f5e90e027e2b3dae9b41837073a2b768ed43be4b4fd02197d7549b"},
+    {"slide":13,"state":2,"after_clicks":2,"png_sha256":"baa3ea71a43639179b550f087d9ab0a09fd8074accfdb888eaf13d966319bd15"},
+    {"slide":15,"state":0,"after_clicks":0,"png_sha256":"949b8970c03cf694bfedb29666494bb61c69b886e5c1d2a537bdbbf8e66a7996"},
+    {"slide":15,"state":1,"after_clicks":1,"png_sha256":"7ddf8233904e98c46598b86ec48822e13eccea3d282a9197b07ce3e87f28d242"},
+    {"slide":15,"state":2,"after_clicks":2,"png_sha256":"d4255c8df298565223e438be61efee392a2c574ff335be364a5d89ac2fd69cc3"},
+    {"slide":15,"state":3,"after_clicks":3,"png_sha256":"ae80530a36c05027f468ab8c2363adc10fd40c4158f74acdee50b26a2c4f561f"},
+    {"slide":15,"state":4,"after_clicks":4,"png_sha256":"3dcbefa06b637422ff646924dbea3c4c2e4b5317e9c3d32bb6d4ed5af1fbc214"},
+    {"slide":15,"state":5,"after_clicks":5,"png_sha256":"7471e307d8d458b79b34c79d4c37797a636e4ce5400abbeab2cb77ec1619397b"}
+  ],
+  "final_pages": [
+    {"page":1,"png_sha256":"10a4aef2d1a5f7a92472a50922369f3b868489143a224b0877ca7fa1a545c6f4"},
+    {"page":2,"png_sha256":"8c0d850df2f8ae0a15ed954117b723e728ac6add50ed085147071e8bdd960656"},
+    {"page":3,"png_sha256":"59c0ca7b5e5aeeeed3916e718a4f7c9e9ff5d45b8480683aad1979e1a6450b37"},
+    {"page":4,"png_sha256":"c96decb4d8098aaca3960faaf2fb035b785c056009586af8d4a7a126a2debfab"},
+    {"page":5,"png_sha256":"2f9ef0e7bef100b01966d12e6bad717357aee4688ad24b8c848bc2c0839c9ba0"},
+    {"page":6,"png_sha256":"ce25fc5ee434607f27f847eb0e519c0da2d87cfa2b9de083929fbb3f5de5a35c"},
+    {"page":7,"png_sha256":"c865427620218bbd47c45d53402df53d05bd7f31e4bee75377a8f453dcc88281"},
+    {"page":8,"png_sha256":"3954ba5b0eda3c676ecb3c3462304cbd965fedd17a5e0645211997f27e1467bd"},
+    {"page":9,"png_sha256":"7f71b335c2c9c7bb87939721841b44a606f7eee97f0244d88e4c534a80d7e9d0"},
+    {"page":10,"png_sha256":"d2294cb1f759da74550c89035c0b6bb2d7ba7a2760493cef36ca85cf82809658"},
+    {"page":11,"png_sha256":"1bb09636c298dc0a73401102b7e8c04a169d78f92db09e5e461ea8c05de066d4"},
+    {"page":12,"png_sha256":"6bf0e69ff7e083ad336aefc8727b197881e5e2d9e9c56c955a22ae3baa5bfe95"},
+    {"page":13,"png_sha256":"067e641433a83aa505ec627b5d051d354420979d697e8213e7868549503c5900"},
+    {"page":14,"png_sha256":"8007560e55f4ad482fe006dbb246e190e6b694c7ec14e0853d2314b5f4cad171"},
+    {"page":15,"png_sha256":"e60eb6f43fb4835f4b0a717f0d7fdf3e4e834385b8abf1f7c48e4fbac27191b5"}
+  ],
+  "scope": "Assistant visual review of CI-rendered final pages and authored animation-state snapshots; Microsoft PowerPoint Desktop runtime playback remains a separate final gate."
+}

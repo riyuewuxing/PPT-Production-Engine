@@ -131,6 +131,31 @@ def normalize_text(value: str) -> str:
     return re.sub(r"\s+", "", value)
 
 
+def parse_animation_slide_indexes(rows: object) -> list[int]:
+    """Normalize PPT Master delivery-check animation slide formats.
+
+    Current PPT Master emits integer slide numbers (for example [7, 15]).
+    Older or alternate reports may emit objects. Accept both shapes while
+    rejecting booleans and non-positive indexes so QA cannot silently widen.
+    """
+    if not isinstance(rows, list):
+        return []
+    indexes: set[int] = set()
+    for row in rows:
+        value: object = None
+        if isinstance(row, int) and not isinstance(row, bool):
+            value = row
+        elif isinstance(row, dict):
+            for key in ("index", "slide", "slide_index"):
+                candidate = row.get(key)
+                if isinstance(candidate, int) and not isinstance(candidate, bool):
+                    value = candidate
+                    break
+        if isinstance(value, int) and value > 0:
+            indexes.add(value)
+    return sorted(indexes)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--manifest", required=True)
@@ -229,7 +254,7 @@ def main() -> int:
     motion = delivery.get("motion", {}) if isinstance(delivery, dict) else {}
     obj = motion.get("object_animations", {}) if isinstance(motion, dict) else {}
     anim_slides = obj.get("object_animation_slides", []) if isinstance(obj, dict) else []
-    actual_anim_indexes = sorted({int(row["index"]) for row in anim_slides if isinstance(row, dict) and isinstance(row.get("index"), int)})
+    actual_anim_indexes = parse_animation_slide_indexes(anim_slides)
     required_anim_indexes = sorted(int(key) for key in animation_targets)
     animation_pass = set(required_anim_indexes).issubset(actual_anim_indexes)
 

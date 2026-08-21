@@ -1,0 +1,52 @@
+{
+  "contract_version": "1",
+  "stage": "RUN002_V3_DYNAMIC_STATE_PLAN",
+  "rule": "Final deck cannot pass until every animated slide is reviewed state-by-state in PowerPoint Desktop playback. This manifest defines expected states before native animation generation.",
+  "slides": {
+    "7": {
+      "purpose": "Reveal how W and Q enter the energy ledger and produce ΔU = W + Q.",
+      "states": [
+        {"state":"S0","visible":["title","ledger-box","delta-u-symbol"],"hidden":["work-channel","heat-channel","formula"],"check":"Ledger is introduced without implying a process yet."},
+        {"state":"S1","click":1,"new":["work-channel"],"check":"Blue W channel appears and enters the ledger from the left; it must not stop before the ledger box."},
+        {"state":"S2","click":2,"new":["heat-channel"],"check":"Orange Q channel appears and enters the ledger from the right; it must not collide with W or formula."},
+        {"state":"S3","click":3,"new":["formula"],"check":"ΔU = W + Q appears after both channels are visible."}
+      ],
+      "minimum_clicks": 3
+    },
+    "13": {
+      "purpose": "Presenter-paced concept check. Question statements appear first; answer boxes remain fixed; final answer reveal does not move the question area.",
+      "states": [
+        {"state":"S0","visible":["title","A-D rails","answer boxes"],"hidden":["statement-A","statement-B","statement-C","statement-D","answers"],"check":"Blank rails are acceptable only as the initial pre-question state."},
+        {"state":"S1","click":1,"new":["statement-A","statement-B","statement-C","statement-D"],"check":"All four statements become readable; no text overlaps rails or answer boxes."},
+        {"state":"S2","click":2,"new":["answers"],"check":"Answer marks appear inside the fixed boxes; question text and answer boxes do not shift."}
+      ],
+      "minimum_clicks": 2,
+      "required_statements": [
+        "A 只要物体温度升高，就一定吸收了热量。",
+        "B 外界对气体做功，气体内能可能增加。",
+        "C 热量是物体内部本来含有的一种物质。",
+        "D 摩擦生热说明机械能可以转化为内能。"
+      ],
+      "answer_reveal": {"A":"错","B":"对","C":"错","D":"对"}
+    },
+    "15": {
+      "purpose": "Reveal the final reasoning chain from boundary to W/Q to ΔU to observable state change.",
+      "states": [
+        {"state":"S0","visible":["title","system-boundary"],"hidden":["work-channel","heat-channel","delta-u","state-change","observable-result","bottom-chain"],"check":"System boundary is the starting anchor."},
+        {"state":"S1","click":1,"new":["work-channel"],"check":"W channel crosses boundary and terminates at ΔU target region."},
+        {"state":"S2","click":2,"new":["heat-channel"],"check":"Q channel crosses boundary and terminates at the same ΔU target region."},
+        {"state":"S3","click":3,"new":["delta-u","internal-energy-u1-u2"],"check":"ΔU stays inside system boundary and is not drawn as an external flow."},
+        {"state":"S4","click":4,"new":["state-change","observable-result"],"check":"Observable temperature/state change is outside the system as an observation, not as exported ΔU."},
+        {"state":"S5","click":5,"new":["bottom-chain"],"check":"Final reasoning sentence summarizes: boundary -> W/Q -> ΔU -> state change."}
+      ],
+      "minimum_clicks": 5
+    }
+  },
+  "hard_fails": [
+    "Any declared hidden object visible in S0 unless explicitly marked as background.",
+    "Any click changes unrelated objects or moves previously stable objects unexpectedly.",
+    "Any answer reveal on slide 13 shifts question rails or answer boxes.",
+    "Any W/Q connector on slides 7 or 15 fails to cross its declared boundary/target.",
+    "Any final PowerPoint state differs materially from the rendered expected state."
+  ]
+}

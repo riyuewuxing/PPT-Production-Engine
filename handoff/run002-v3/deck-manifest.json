@@ -1,0 +1,42 @@
+{
+  "engine_version": "0.5.0-run002-v3-static",
+  "request_id": "benchmark-cycle1-run002-v3-static-deck",
+  "deck": {
+    "title": "功、热传递与内能改变 V3",
+    "subject": "高中物理热学：做功、热传递与内能改变",
+    "author": "PPT Production Engine",
+    "company": "riyuewuxing/PPT",
+    "language": "zh-CN"
+  },
+  "output": {
+    "pptx": "dist/run002-v3/deck/internal_energy_change_v3_static_asset_deck.pptx",
+    "qa_dir": "dist/run002-v3/deck-qa",
+    "render_dir": "dist/run002-v3/deck-rendered"
+  },
+  "quality": {
+    "min_slides": 15,
+    "require_wide": true,
+    "render_dpi": 144,
+    "stage": "STATIC_ASSET_DECK_PRE_DYNAMIC",
+    "requires_asset_visual_review_pass": true,
+    "target_player_playback_required_for_final": true,
+    "trigger_note": "second push after workflow creation so GitHub evaluates the static-deck workflow on this branch"
+  },
+  "slides": [
+    {"type":"full_asset","phase":"问题引入","image":"dist/run002-v3/assets/png/01-s01-hero-two-channels.png"},
+    {"type":"full_asset","phase":"路径对比","image":"dist/run002-v3/assets/png/02-s02-work-vs-heat.png"},
+    {"type":"full_asset","phase":"概念建模","image":"dist/run002-v3/assets/png/03-s03-internal-energy-micro.png"},
+    {"type":"full_asset","phase":"系统边界","image":"dist/run002-v3/assets/png/04-s04-system-boundary-paths.png"},
+    {"type":"full_asset","phase":"做功机制","image":"dist/run002-v3/assets/png/05-s05-compression-work.png"},
+    {"type":"full_asset","phase":"热传递机制","image":"dist/run002-v3/assets/png/06-s06-heat-transfer.png"},
+    {"type":"full_asset","phase":"统一账本","image":"dist/run002-v3/assets/png/07-s07-energy-ledger.png"},
+    {"type":"full_asset","phase":"路径与状态","image":"dist/run002-v3/assets/png/08-s08-same-state-two-paths.png"},
+    {"type":"full_asset","phase":"案例：快速压缩","image":"dist/run002-v3/assets/png/09-s09-fast-compression.png"},
+    {"type":"full_asset","phase":"案例：搅拌摩擦","image":"dist/run002-v3/assets/png/10-s10-stirring-conversion.png"},
+    {"type":"full_asset","phase":"状态量与过程量","image":"dist/run002-v3/assets/png/11-s11-state-vs-process.png"},
+    {"type":"full_asset","phase":"影响因素","image":"dist/run002-v3/assets/png/12-s12-internal-energy-factors.png"},
+    {"type":"full_asset","phase":"课堂判断","image":"dist/run002-v3/assets/png/13-s13-concept-check.png"},
+    {"type":"full_asset","phase":"生活应用","image":"dist/run002-v3/assets/png/14-s14-applications.png"},
+    {"type":"full_asset","phase":"综合回顾","image":"dist/run002-v3/assets/png/15-s15-synthesis-two-channels.png"}
+  ]
+}

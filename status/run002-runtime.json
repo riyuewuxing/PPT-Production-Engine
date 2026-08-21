@@ -1,0 +1,24 @@
+{
+  "workflow_status": "success",
+  "run_id": "32460256252",
+  "engine_commit": "e0514c8c315de5707bcbbd4806dc4b2f990a77c0",
+  "branch": "run002-engine-runtime",
+  "historical_source_git_blob_sha": "fc894e245543f8dfe731d06f31ff293e0d46c165",
+  "reviewed_v1_sha256": "fffc24a5286d14a8ac5c4364e86d07a50a4ee43b6d1b006abd62bcb4fdd5b94c",
+  "rebuilt_v1_sha256": "85a5d4fc9a944c993240e6a847f3f3eeebde7ab9af4854df8ab0975109ab2a0b",
+  "v1_review_inheritance_eligible": false,
+  "geometry_normalization_status": "PASS",
+  "negative_line_fixes": 1,
+  "migration_status": "PASS",
+  "native_object_animation_slides": [
+    7,
+    15
+  ],
+  "semantic_readback_pass": true,
+  "package_status": "PASS",
+  "render_status": "PASS",
+  "rendered_pages": 15,
+  "v2_pptx_sha256": "cb392c3062eadeee247fe35b8b703214318f5f743fc3747b9098c3576a3baaac",
+  "runtime_receipt_status": "PASS",
+  "artifact_name": "run002-native-migration-32460256252"
+}
