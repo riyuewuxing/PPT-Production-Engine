@@ -1,11 +1,11 @@
 {
   "workflow_status": "success",
-  "run_id": "32475811220",
-  "engine_commit": "9d675a754590ee721f8d1dba5a3e0b59ff5c22fc",
+  "run_id": "32476131529",
+  "engine_commit": "0e13014513d69cc0f4bc4174f4c5e52acfba2bf7",
   "static_deck_status": "PASS_STATIC_PRE_DYNAMIC",
-  "v3_pptx_sha256": "85ca94845babdf3ee35658b68459ff58c150643c2890a5b0c54686fe7af86842",
+  "v3_pptx_sha256": "dc3c6086f95f20e68a01356d0102ee99deea1653e7839e59655eb224db430349",
   "rendered_pages": 15,
-  "artifact_name": "run002-v3-static-deck-32475811220",
+  "artifact_name": "run002-v3-static-deck-32476131529",
   "assistant_static_slide_review": "PENDING",
   "target_powerpoint_playback": "NOT_RUN_REQUIRED_FOR_FINAL"
 }
