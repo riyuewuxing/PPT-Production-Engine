@@ -1,7 +1,7 @@
 {
   "contract_version": "1",
   "mode": "historical-native-migration",
-  "source_pptx": "dist/run002/exports/internal_energy_change_benchmark_v1.pptx",
+  "source_pptx": "dist/run002/normalized/internal_energy_change_benchmark_v1.pptx",
   "output_pptx": "dist/run002/exports/internal_energy_change_benchmark_v2.pptx",
   "work_dir": "dist/run002/work",
   "qa_dir": "dist/run002/qa/migration",

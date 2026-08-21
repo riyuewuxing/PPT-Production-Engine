@@ -6,6 +6,7 @@ on:
     paths:
       - handoff/run002/**
       - engine/legacy_pptxgenjs_adapter.py
+      - engine/legacy_pptx_geometry_normalizer.py
       - engine/ppt_master_migrate.py
       - engine/qa_package.py
       - engine/render_pptx.py
@@ -77,7 +78,10 @@ jobs:
           print(json.dumps(out, ensure_ascii=False, indent=2))
           PY
 
-      - name: Migrate V1 to native-animation V2
+      - name: Normalize bounded legacy line geometry
+        run: python engine/legacy_pptx_geometry_normalizer.py --manifest handoff/run002/geometry-manifest.json
+
+      - name: Migrate normalized V1 to native-animation V2
         run: python engine/ppt_master_migrate.py --manifest handoff/run002/migration-manifest.json
 
       - name: Exact V2 package QA
@@ -94,6 +98,7 @@ jobs:
           def load(p):
               return json.loads(Path(p).read_text(encoding='utf-8'))
           baseline = load('dist/run002/qa/v1-baseline-qa.json')
+          geometry = load('dist/run002/qa/geometry-normalization.json')
           migration = load('dist/run002/qa/migration/migration-qa.json')
           package = load('dist/run002/deck-qa/package-qa.json')
           render = load('dist/run002/deck-qa/render-qa.json')
@@ -102,6 +107,7 @@ jobs:
           required = [7, 15]
           actual = migration.get('actual_object_animation_slides') or []
           checks = {
+              'legacy_geometry_normalization_pass': geometry.get('status') == 'PASS' and geometry.get('actual_negative_line_fixes') == 1,
               'migration_pass': migration.get('status') == 'PASS',
               'native_animation_pass': migration.get('native_object_animation_pass') is True and set(required).issubset(set(actual)),
               'semantic_readback_pass': migration.get('semantic_readback_pass') is True,
@@ -113,6 +119,7 @@ jobs:
           out = {
               'status': 'PASS' if ok else 'FAIL',
               'v1_baseline': baseline,
+              'legacy_geometry_normalization': geometry,
               'v2_pptx_sha256': hashes[0] if same_generation else None,
               'required_object_animation_slides': required,
               'actual_object_animation_slides': actual,
@@ -151,6 +158,7 @@ jobs:
               p = Path(path)
               return json.loads(p.read_text(encoding='utf-8')) if p.exists() else None
           baseline = load('dist/run002/qa/v1-baseline-qa.json')
+          geometry = load('dist/run002/qa/geometry-normalization.json')
           migration = load('dist/run002/qa/migration/migration-qa.json')
           package = load('dist/run002/deck-qa/package-qa.json')
           render = load('dist/run002/deck-qa/render-qa.json')
@@ -164,6 +172,8 @@ jobs:
               'reviewed_v1_sha256': 'fffc24a5286d14a8ac5c4364e86d07a50a4ee43b6d1b006abd62bcb4fdd5b94c',
               'rebuilt_v1_sha256': baseline.get('rebuilt_v1_sha256') if baseline else None,
               'v1_review_inheritance_eligible': baseline.get('review_inheritance_eligible') if baseline else None,
+              'geometry_normalization_status': geometry.get('status') if geometry else None,
+              'negative_line_fixes': geometry.get('actual_negative_line_fixes') if geometry else None,
               'migration_status': migration.get('status') if migration else None,
               'native_object_animation_slides': migration.get('actual_object_animation_slides') if migration else None,
               'semantic_readback_pass': migration.get('semantic_readback_pass') if migration else None,
