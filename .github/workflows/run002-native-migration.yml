@@ -1,0 +1,186 @@
+name: Run002 Historical Native Migration
+
+on:
+  push:
+    branches: [run002-engine-runtime]
+    paths:
+      - handoff/run002/**
+      - engine/legacy_pptxgenjs_adapter.py
+      - engine/ppt_master_migrate.py
+      - engine/qa_package.py
+      - engine/render_pptx.py
+      - .github/workflows/run002-native-migration.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  run002-native-migration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout Engine branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Checkout pinned PPT Master
+        uses: actions/checkout@v4
+        with:
+          repository: hugohe3/ppt-master
+          ref: 228fe8b7558f6c2abeb557952b10c8caff574b26
+          path: vendor/ppt-master
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice poppler-utils fonts-noto-cjk
+          npm install --ignore-scripts --no-audit --no-fund
+          python -m pip install --disable-pip-version-check --no-cache-dir \
+            python-pptx XlsxWriter skia-pathops uharfbuzz Pillow numpy
+
+      - name: Rebuild hash-pinned V1
+        run: python engine/legacy_pptxgenjs_adapter.py --manifest handoff/run002/legacy-manifest.json
+
+      - name: Compare reviewed V1 baseline
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          reviewed = 'fffc24a5286d14a8ac5c4364e86d07a50a4ee43b6d1b006abd62bcb4fdd5b94c'
+          p = Path('dist/run002/qa/legacy-rebuild.json')
+          d = json.loads(p.read_text(encoding='utf-8'))
+          actual = d['pptx_sha256']
+          match = actual == reviewed
+          out = {
+              'status': 'PASS' if match else 'MISMATCH',
+              'reviewed_v1_sha256': reviewed,
+              'rebuilt_v1_sha256': actual,
+              'review_inheritance_eligible': match,
+              'rule': 'A mismatch does not block V2 migration; it invalidates inherited historical visual review and requires fresh V2 page review.'
+          }
+          Path('dist/run002/qa/v1-baseline-qa.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(out, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Migrate V1 to native-animation V2
+        run: python engine/ppt_master_migrate.py --manifest handoff/run002/migration-manifest.json
+
+      - name: Exact V2 package QA
+        run: python engine/qa_package.py --manifest handoff/run002/render-manifest.json
+
+      - name: Actual LibreOffice render
+        run: python engine/render_pptx.py --manifest handoff/run002/render-manifest.json
+
+      - name: Bind exact-generation release receipt
+        run: |
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          def load(p):
+              return json.loads(Path(p).read_text(encoding='utf-8'))
+          baseline = load('dist/run002/qa/v1-baseline-qa.json')
+          migration = load('dist/run002/qa/migration/migration-qa.json')
+          package = load('dist/run002/deck-qa/package-qa.json')
+          render = load('dist/run002/deck-qa/render-qa.json')
+          hashes = [migration.get('output_pptx_sha256'), package.get('pptx_sha256'), render.get('pptx_sha256')]
+          same_generation = len(set(hashes)) == 1 and all(hashes)
+          required = [7, 15]
+          actual = migration.get('actual_object_animation_slides') or []
+          checks = {
+              'migration_pass': migration.get('status') == 'PASS',
+              'native_animation_pass': migration.get('native_object_animation_pass') is True and set(required).issubset(set(actual)),
+              'semantic_readback_pass': migration.get('semantic_readback_pass') is True,
+              'package_pass': package.get('status') == 'PASS',
+              'render_pass': render.get('status') == 'PASS' and len(render.get('pages', [])) == 15,
+              'same_generation': same_generation,
+          }
+          ok = all(checks.values())
+          out = {
+              'status': 'PASS' if ok else 'FAIL',
+              'v1_baseline': baseline,
+              'v2_pptx_sha256': hashes[0] if same_generation else None,
+              'required_object_animation_slides': required,
+              'actual_object_animation_slides': actual,
+              'rendered_pages': len(render.get('pages', [])),
+              'checks': checks,
+          }
+          Path('dist/run002/qa/run002-runtime-receipt.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(out, ensure_ascii=False, indent=2))
+          if not ok:
+              sys.exit(1)
+          PY
+
+      - name: Upload transient Run002 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run002-native-migration-${{ github.run_id }}
+          path: |
+            dist/run002/exports/*.pptx
+            dist/run002/qa/**/*.json
+            dist/run002/deck-qa/*.json
+            dist/run002/rendered/*.pdf
+            dist/run002/rendered/*.png
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Publish non-sensitive Run002 status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          def load(path):
+              p = Path(path)
+              return json.loads(p.read_text(encoding='utf-8')) if p.exists() else None
+          baseline = load('dist/run002/qa/v1-baseline-qa.json')
+          migration = load('dist/run002/qa/migration/migration-qa.json')
+          package = load('dist/run002/deck-qa/package-qa.json')
+          render = load('dist/run002/deck-qa/render-qa.json')
+          receipt = load('dist/run002/qa/run002-runtime-receipt.json')
+          out = {
+              'workflow_status': os.environ.get('JOB_STATUS'),
+              'run_id': os.environ.get('GITHUB_RUN_ID'),
+              'engine_commit': os.environ.get('GITHUB_SHA'),
+              'branch': os.environ.get('GITHUB_REF_NAME'),
+              'historical_source_git_blob_sha': 'fc894e245543f8dfe731d06f31ff293e0d46c165',
+              'reviewed_v1_sha256': 'fffc24a5286d14a8ac5c4364e86d07a50a4ee43b6d1b006abd62bcb4fdd5b94c',
+              'rebuilt_v1_sha256': baseline.get('rebuilt_v1_sha256') if baseline else None,
+              'v1_review_inheritance_eligible': baseline.get('review_inheritance_eligible') if baseline else None,
+              'migration_status': migration.get('status') if migration else None,
+              'native_object_animation_slides': migration.get('actual_object_animation_slides') if migration else None,
+              'semantic_readback_pass': migration.get('semantic_readback_pass') if migration else None,
+              'package_status': package.get('status') if package else None,
+              'render_status': render.get('status') if render else None,
+              'rendered_pages': len(render.get('pages', [])) if render else None,
+              'v2_pptx_sha256': (receipt or {}).get('v2_pptx_sha256') or (render or package or migration or {}).get('pptx_sha256') or (migration or {}).get('output_pptx_sha256'),
+              'runtime_receipt_status': receipt.get('status') if receipt else None,
+              'artifact_name': f"run002-native-migration-{os.environ.get('GITHUB_RUN_ID')}",
+          }
+          Path('status').mkdir(exist_ok=True)
+          Path('status/run002-runtime.json').write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(out, ensure_ascii=False, indent=2))
+          PY
+          git config user.name 'ppt-production-engine[bot]'
+          git config user.email 'ppt-production-engine[bot]@users.noreply.github.com'
+          git add status/run002-runtime.json
+          git commit -m "Record Run002 runtime ${GITHUB_RUN_ID}" || true
+          git pull --rebase origin run002-engine-runtime
+          git push origin HEAD:run002-engine-runtime
