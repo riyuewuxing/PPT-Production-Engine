@@ -1,9 +1,9 @@
 {
   "workflow_status": "failure",
-  "run_id": "32471820227",
-  "engine_commit": "9eb8b50923b3e029811274baf918215fe833eddc",
+  "run_id": "32472085903",
+  "engine_commit": "706285962db27c5247bf61207ef6291e8b3cd378",
   "asset_stage_status": null,
   "asset_count": 0,
-  "artifact_name": "run002-v3-assets-32471820227",
+  "artifact_name": "run002-v3-assets-32472085903",
   "assistant_visual_review": "PENDING"
 }
